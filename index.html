@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Prode Mundial 2026</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="screen-login" class="screen active">
+  <div class="login-bg"></div>
+  <div class="login-card">
+    <div class="login-logo">🏆</div>
+    <h1 class="login-title">Prode Mundial 2026</h1>
+    <p class="login-sub">🇺🇸 🇨🇦 🇲🇽 &nbsp;·&nbsp; 11 Jun – 19 Jul 2026</p>
+    <div class="form-group">
+      <label>Usuario</label>
+      <input id="inp-user" type="text" placeholder="Tu nombre de usuario" autocomplete="username"/>
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input id="inp-pass" type="password" placeholder="••••••••" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter') handleLogin()"/>
+    </div>
+    <div id="login-error" class="error-msg hidden">Usuario o contraseña incorrectos</div>
+    <button id="btn-login" class="btn-primary" onclick="handleLogin()">Entrar al Prode</button>
+    <p class="login-hint">¿No tenés acceso? Pedile al admin que te agregue.</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="screen-app" class="screen">
+  <nav class="navbar">
+    <div class="nav-brand">🏆 Prode 2026</div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" data-tab="tab-prode" onclick="showTab('tab-prode',this)">Mis Pronósticos</button>
+      <button class="nav-tab" data-tab="tab-resultados" onclick="showTab('tab-resultados',this)">Resultados</button>
+      <button class="nav-tab" data-tab="tab-ranking" onclick="showTab('tab-ranking',this)">Ranking</button>
+      <button class="nav-tab" data-tab="tab-info" onclick="showTab('tab-info',this)">Info</button>
+    </div>
+    <div class="nav-user">
+      <span id="nav-username" class="nav-username-text"></span>
+      <button class="btn-logout" onclick="logout()">Salir</button>
+    </div>
+  </nav>
+
+  <main class="main-content">
+
+    <!-- TAB PRONOSTICOS -->
+    <div id="tab-prode" class="tab-content active">
+      <div class="tab-header">
+        <h2>Mis Pronósticos</h2>
+        <div id="prode-pts-badge" class="pts-badge"></div>
+      </div>
+      <div id="prode-phase-msg" class="phase-msg"></div>
+      <div id="prode-container"></div>
+      <div id="btn-save-container" class="save-container hidden">
+        <button class="btn-primary btn-save" onclick="savePronosticos()">💾 Guardar mis pronósticos</button>
+        <span id="save-status" class="save-status"></span>
+      </div>
+    </div>
+
+    <!-- TAB RESULTADOS -->
+    <div id="tab-resultados" class="tab-content">
+      <div class="tab-header"><h2>Resultados Oficiales</h2></div>
+      <div id="resultados-container"></div>
+    </div>
+
+    <!-- TAB RANKING -->
+    <div id="tab-ranking" class="tab-content">
+      <div class="tab-header"><h2>🏆 Ranking General</h2></div>
+      <div id="ranking-container"></div>
+    </div>
+
+    <!-- TAB INFO -->
+    <div id="tab-info" class="tab-content">
+      <div class="tab-header"><h2>Reglas e Información</h2></div>
+      <div class="info-card">
+        <h3>⚽ Sistema de Puntos</h3>
+        <div class="puntos-grid">
+          <div class="punto-item gold"><span class="punto-val">7 pts</span><span class="punto-desc">🎯 Marcador exacto</span></div>
+          <div class="punto-item green"><span class="punto-val">3 pts</span><span class="punto-desc">✅ Resultado correcto (G/E/P)</span></div>
+          <div class="punto-item blue"><span class="punto-val">+2 pts</span><span class="punto-desc">⚽ Goles de un equipo acertados (máx +4)</span></div>
+        </div>
+        <div class="info-example">
+          <strong>Ejemplos:</strong><br>
+          Pronosticás 2-1 <br>
+          sale 2-1 →  <strong>7 pts ✅ EXACTO ✅ </strong><br>
+          sale 3-1 →  <strong>5 pts</strong> = resultado 3pts ✅ + visitante 2pts ✅ <br>
+          sale 2-0 →  <strong>5 pts</strong> = resultado 3pts ✅ + local 2pts ✅ <br>
+          sale 4-0 →  <strong>3 pts</strong> = resultado 3pts ✅ <br>
+          sale 1-1 →  <strong>2 pts</strong> = visitante 2pts ✅<br>
+          sale 2-2 →  <strong>2 pts</strong> = local 2pts ✅<br>
+          
+        </div>
+      </div>
+      <div class="info-card">
+        <h3>📅 Fases del Prode</h3>
+        <p><strong>Fase 1 — Grupos:</strong> Pronosticás los 72 partidos antes del 11 de junio.</p>
+        <p><strong>Fase 2 — Eliminatorias:</strong> Cuando el cuadro esté definido, el admin habilita la carga de pronósticos para la fase final.</p>
+        <p>Los puntos se acumulan durante todo el torneo.</p>
+      </div>
+      <div class="info-card">
+        <h3>📋 Grupos del Mundial 2026</h3>
+        <div id="grupos-grid" class="grupos-grid"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ADMIN PANEL (solo visible para admin) -->
+<div id="screen-admin" class="screen">
+  <nav class="navbar admin-nav">
+    <div class="nav-brand">⚙️ Admin Panel</div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" data-tab="atab-resultados" onclick="showAdminTab('atab-resultados',this)">Cargar Resultados</button>
+      <button class="nav-tab" data-tab="atab-jugadores" onclick="showAdminTab('atab-jugadores',this)">Jugadores</button>
+      <button class="nav-tab" data-tab="atab-fase" onclick="showAdminTab('atab-fase',this)">Control de Fases</button>
+    </div>
+    <div class="nav-user">
+      <span class="nav-username-text">ADMIN</span>
+      <button class="btn-logout" onclick="logout()">Salir</button>
+    </div>
+  </nav>
+  <main class="main-content">
+    <div id="atab-resultados" class="tab-content active">
+      <div class="tab-header"><h2>⚽ Cargar Resultados</h2></div>
+      <div id="admin-resultados-container"></div>
+      <div class="save-container">
+        <button class="btn-primary btn-save" onclick="saveResultados()">💾 Guardar Resultados</button>
+        <span id="admin-save-status" class="save-status"></span>
+      </div>
+    </div>
+    <div id="atab-jugadores" class="tab-content">
+      <div class="tab-header"><h2>👥 Jugadores</h2></div>
+      <div id="admin-jugadores-container"></div>
+    </div>
+    <div id="atab-fase" class="tab-content">
+      <div class="tab-header"><h2>🔐 Control de Fases</h2></div>
+      <div id="admin-fase-container" class="info-card">
+        <p>Controlá qué fases están abiertas para que pronostiquen.</p>
+        <div class="fase-controls" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div class="fase-item"><strong>Grupos</strong> <label class="switch"><input type="checkbox" id="toggle-grupos" onchange="toggleFase('grupos',this.checked)"><span class="slider"></span></label><span id="label-grupos"></span></div>
+          <div class="fase-item"><strong>16avos</strong> <label class="switch"><input type="checkbox" id="toggle-f16" onchange="toggleFase('f16',this.checked)"><span class="slider"></span></label><span id="label-f16"></span></div>
+          <div class="fase-item"><strong>Octavos</strong> <label class="switch"><input type="checkbox" id="toggle-f8" onchange="toggleFase('f8',this.checked)"><span class="slider"></span></label><span id="label-f8"></span></div>
+          <div class="fase-item"><strong>Cuartos</strong> <label class="switch"><input type="checkbox" id="toggle-f4" onchange="toggleFase('f4',this.checked)"><span class="slider"></span></label><span id="label-f4"></span></div>
+          <div class="fase-item"><strong>Semis</strong> <label class="switch"><input type="checkbox" id="toggle-semi" onchange="toggleFase('semi',this.checked)"><span class="slider"></span></label><span id="label-semi"></span></div>
+          <div class="fase-item"><strong>Final</strong> <label class="switch"><input type="checkbox" id="toggle-final" onchange="toggleFase('final',this.checked)"><span class="slider"></span></label><span id="label-final"></span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="loading-overlay" class="loading-overlay hidden">
+  <div class="spinner"></div>
+  <p id="loading-msg">Cargando...</p>
+</div>
+<div id="toast" class="toast hidden"></div>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
