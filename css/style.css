@@ -521,3 +521,9 @@ body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; color: #333;
   cursor: pointer;
   line-height: 1;
 }
+
+.standings-table {
+  min-width: 650px; /* <--- Subile este número para que respiren las columnas */
+  width: 100%;
+  border-collapse: collapse;
+}
