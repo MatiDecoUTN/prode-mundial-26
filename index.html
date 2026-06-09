@@ -35,20 +35,24 @@
 <!-- APP -->
 <div id="screen-app" class="screen">
   <nav class="navbar">
-    <div class="nav-brand">🏆 Prode 2026</div>
-    <div class="nav-tabs">
-      <button class="nav-tab active" data-tab="tab-prode" onclick="showTab('tab-prode',this)">Mis Pronósticos</button>
-      <button class="nav-tab" data-tab="tab-resultados" onclick="showTab('tab-resultados',this)">Resultados</button>
-      <button class="nav-tab" data-tab="tab-ranking" onclick="showTab('tab-ranking',this)">Ranking</button>
-      <button class="nav-tab" data-tab="tab-salon" onclick="showTab('tab-salon', this)">Salón de la Fama 🏛️</button>
-      <button class="nav-tab" data-tab="tab-extras" onclick="showTab('tab-extras', this)">Premios Random 🎲</button>
-      <button class="nav-tab" data-tab="tab-info" onclick="showTab('tab-info',this)">Info</button>
-    </div>
-    <div class="nav-user">
-      <span id="nav-username" class="nav-username-text"></span>
-      <button class="btn-logout" onclick="logout()">Salir</button>
-    </div>
-  </nav>
+      <button class="hamburger-btn" onclick="toggleMenu()">☰</button>
+      
+      <div class="nav-brand">🏆 Prode 2026</div>
+      
+      <div class="nav-tabs" id="menu-tabs">
+        <button class="nav-tab active" data-tab="tab-prode" onclick="showTab('tab-prode',this)">Mis Pronósticos</button>
+        <button class="nav-tab" data-tab="tab-resultados" onclick="showTab('tab-resultados',this)">Resultados</button>
+        <button class="nav-tab" data-tab="tab-ranking" onclick="showTab('tab-ranking',this)">Ranking</button>
+        <button class="nav-tab" data-tab="tab-info" onclick="showTab('tab-info',this)">Info</button>
+        <button class="nav-tab" data-tab="tab-extras" onclick="showTab('tab-extras', this)">Premios Random 🎲</button>
+        <button class="nav-tab" data-tab="tab-salon" onclick="showTab('tab-salon', this)">Salón Fama 🏛️</button>
+      </div>
+      
+      <div class="nav-user">
+        <span id="nav-username" class="nav-username-text"></span>
+        <button class="btn-logout" onclick="logout()">Salir</button>
+      </div>
+    </nav>
 
   <main class="main-content">
 
