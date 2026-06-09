@@ -289,3 +289,126 @@ body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; color: #333;
 .badge-status.parcial { background-color: #fef7e0; color: #b06000; }
 .badge-status.vacio { background-color: #f1f3f4; color: #5f6368; }
 .badge-status.admin-tag { background-color: #e8f0fe; color: #1a73e8; }
+
+/* ---------------------------------------------------
+   CAJA DE PRONÓSTICOS DE OTROS JUGADORES
+   --------------------------------------------------- */
+.others-box {
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  padding: 10px;
+  margin-top: 5px;
+  border: 1px solid #e9ecef;
+}
+.others-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #6c757d;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+.others-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.other-user-chip {
+  background: white;
+  border: 1px solid #dee2e6;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  display: flex;
+  gap: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+.other-name { color: #495057; font-weight: 600; }
+.other-score { color: #0056b3; font-weight: 800; }
+
+/* ---------------------------------------------------
+   INTERFAZ DE PERFILES Y ESTADOS
+   --------------------------------------------------- */
+.clickable-row { cursor: pointer; transition: background-color 0.2s; }
+.clickable-row:hover { background-color: #e9ecef; }
+.ranking-hint { font-size: 0.8rem; color: #666; text-align: center; margin-bottom: 10px; font-weight: 500; }
+
+.other-user-chip.missing { background: #fff3cd; border-color: #ffeeba; }
+.other-user-chip.missing .other-score { color: #856404; font-size: 0.75rem; font-weight: 600; padding-top: 2px; }
+
+/* Modal flotante para el Perfil */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; display: flex; justify-content: center; align-items: center; padding: 20px; animation: fadeIn 0.2s; }
+.modal-content { background: white; width: 100%; max-width: 500px; max-height: 85vh; border-radius: 12px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+.modal-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+.modal-title { font-size: 1.2rem; font-weight: 800; color: #2c3e50; }
+.modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #aaa; transition: color 0.2s; }
+.modal-close:hover { color: #d93025; }
+.modal-body { padding: 20px; overflow-y: auto; }
+.profile-match { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
+.profile-match:last-child { border-bottom: none; }
+
+/* ---------------------------------------------------
+   ESTILOS PARA LAS BANDERAS (IMÁGENES)
+   --------------------------------------------------- */
+.flag img {
+  vertical-align: middle;
+  border-radius: 2px;
+  box-shadow: 0 0 3px rgba(0,0,0,0.2);
+  margin: 0 6px;
+  transform: translateY(-2px); /* Ajuste fino para alinear con el texto */
+}
+
+/* Contenedor del botón guardar fijo abajo al escrolear */
+#btn-save-container {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 600px; /* Alínea con el ancho de las tarjetas */
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(4px); /* Efecto esmerilado moderno */
+  padding: 15px;
+  box-shadow: 0 -4px 15px rgba(0,0,0,0.1);
+  z-index: 999;
+  border-top: 1px solid #dee2e6;
+}
+
+/* Espaciado inferior para que el botón fijo no tape la última tarjeta */
+#screen-app {
+  padding-bottom: 90px;
+}
+
+/* Color distintivo para los mejores terceros clasificados */
+.standings-table tr td.clasificado-tercero {
+  background-color: #e8f0fe !important; /* Azul suave */
+  color: #1a73e8 !important;
+  font-weight: bold;
+}
+
+/* ---------------------------------------------------
+   ESTILOS DE PREMIOS RANDOM
+   --------------------------------------------------- */
+.form-group {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+}
+.form-group label {
+  font-weight: 700;
+  color: #495057;
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+}
+.inp-extra {
+  padding: 10px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+.inp-extra:focus {
+  outline: none;
+  border-color: #8e44ad;
+  box-shadow: 0 0 0 2px rgba(142, 68, 173, 0.2);
+}
