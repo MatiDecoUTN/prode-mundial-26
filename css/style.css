@@ -412,3 +412,58 @@ body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; color: #333;
   border-color: #8e44ad;
   box-shadow: 0 0 0 2px rgba(142, 68, 173, 0.2);
 }
+
+/* ---------------------------------------------------
+   MENÚ RESPONSIVE (HAMBURGUESA)
+   --------------------------------------------------- */
+/* Ocultamos el botón en la compu */
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  color: #2c3e50;
+  cursor: pointer;
+  padding: 0 10px;
+}
+
+/* Solo se aplica si la pantalla es de celular (menor a 768px) */
+@media (max-width: 768px) {
+  .hamburger-btn {
+    display: block; /* Mostramos las 3 rayitas */
+  }
+
+  .nav-tabs {
+    display: none; /* Ocultamos la barra horizontal */
+    position: absolute;
+    top: 60px; /* Ajustalo si tu navbar es más alto/bajo */
+    left: 0;
+    width: 100%;
+    background: white;
+    flex-direction: column;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    z-index: 1000;
+    padding: 0;
+  }
+
+  /* Esta clase se activa con JavaScript al tocar el botón */
+  .nav-tabs.open {
+    display: flex;
+  }
+
+  /* Estilizamos los botones para que ocupen todo el ancho y parezcan una lista */
+  .nav-tabs .nav-tab, 
+  .nav-tabs .tab-btn {
+    width: 100%;
+    text-align: left;
+    padding: 15px 20px;
+    border-radius: 0;
+    border-bottom: 1px solid #f0f0f0;
+    margin: 0;
+  }
+
+  .nav-tabs .nav-tab.active {
+    background-color: #f8f9fa;
+    border-left: 4px solid #8e44ad; /* Una barrita de color para saber dónde estás */
+  }
+}
