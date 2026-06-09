@@ -336,7 +336,14 @@ function actualizarTablas() {
             <tr>
               <th style="width: 25px; text-align: center;">#</th>
               <th style="text-align: left;">Equipo</th>
-              <th>Pts</th><th>PJ</th><th>DF</th>
+              <th>Pts</th>
+              <th>PJ</th>
+              <th>G</th>
+              <th>E</th>
+              <th>P</th>
+              <th>GF</th>
+              <th>GC</th>
+              <th>DF</th>
             </tr>
           </thead>
           <tbody>
@@ -351,8 +358,13 @@ function actualizarTablas() {
           <td class="team-name ${claseClasificacion}" style="text-align: left; display: flex; align-items: center; gap: 6px;">
             <span class="flag">${getBandera(eq.nombre)}</span> ${eq.nombre}
           </td>
-          <td class="col-pts">${eq.pts}</td>
+          <td class="col-pts" style="font-weight: bold; color: #2c3e50;">${eq.pts}</td>
           <td>${eq.pj}</td>
+          <td>${eq.g || 0}</td>
+          <td>${eq.e || 0}</td>
+          <td>${eq.p || 0}</td>
+          <td>${eq.gf || 0}</td>
+          <td>${eq.gc || 0}</td>
           <td>${eq.df > 0 ? '+' + eq.df : eq.df}</td>
         </tr>
       `;
