@@ -467,3 +467,57 @@ body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; color: #333;
     border-left: 4px solid #8e44ad; /* Una barrita de color para saber dónde estás */
   }
 }
+
+
+/* ---------------------------------------------------
+   SOLUCIÓN SCROLL DE TABLAS EN CELULAR
+   --------------------------------------------------- */
+.table-container {
+  width: 100%;
+  overflow-x: auto; /* Permite scroll horizontal si la tabla desborda */
+  -webkit-overflow-scrolling: touch; /* Scroll suave en iPhones */
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+.standings-table {
+  min-width: 520px; /* Obliga a la tabla a no aplastarse en pantallas chicas */
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* ---------------------------------------------------
+   POPUP / BANNER DE CUENTA REGRESIVA
+   --------------------------------------------------- */
+.countdown-popup {
+  position: fixed;
+  top: 75px; /* Se ubica justo debajo de la navbar */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 500px;
+  background: #fff3cd; /* Amarillo de advertencia sutil */
+  color: #856404;
+  border: 1px solid #ffeeba;
+  padding: 12px 40px 12px 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+  z-index: 2000; /* Asegura que flote por encima de todo */
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.countdown-popup .close-popup-btn {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  color: #856404;
+  cursor: pointer;
+  line-height: 1;
+}
