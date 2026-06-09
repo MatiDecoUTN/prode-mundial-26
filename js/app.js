@@ -164,6 +164,7 @@ async function fetchAppDatos() {
       document.getElementById('nav-username').innerText = currentUser.username;
       renderMisPronosticos(); renderResultadosOficiales(); renderRankingGeneral();
       renderPremiosRandom(); // <-- Sumar esta línea
+      iniciarContadorRegresivo();
     }
   } catch (err) { alert("Error: " + err.message); } finally { loading.classList.add('hidden'); }
 }
@@ -1180,4 +1181,50 @@ async function guardarExtras() {
 function toggleMenu() {
   const menu = document.getElementById('menu-tabs');
   menu.classList.toggle('open');
+}
+
+
+function iniciarContadorRegresivo() {
+  const banner = document.getElementById('countdown-banner');
+  if (!banner) return;
+
+  // Si el Admin ya cerró la Fase de Grupos en el switch, ocultamos el cartel por completo
+  if (appData && appData.fases && appData.fases.grupos === false) {
+    banner.style.display = 'none';
+    return;
+  }
+
+  // Fecha límite exacta: 11 de Junio de 2026 a las 12:00 PM (Mediodía)
+  const fechaLimite = new Date("June 11, 2026 12:00:00").getTime();
+
+  // Actualizamos el contador cada 1 segundo
+  const intervalo = setInterval(function() {
+    const ahora = new Date().getTime();
+    const distancia = fechaLimite - ahora;
+
+    // Si se cumplió el tiempo
+    if (distancia < 0) {
+      clearInterval(intervalo);
+      document.getElementById("countdown-text").innerHTML = "🔒 <strong>¡Tiempo cumplido!</strong> Pronósticos bloqueados.";
+      banner.style.background = "#f8d7da";
+      banner.style.color = "#721c24";
+      banner.style.borderColor = "#f5c6cb";
+      return;
+    }
+
+    // Cálculos matemáticos de tiempo
+    const dias = Math.floor(distancia / (1000 * 60 * 60 * 24));
+    const horas = Math.floor((distancia % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutos = Math.floor((distancia % (1000 * 60 * 60)) / (1000 * 60));
+    const segundos = Math.floor((distancia % (1000 * 60)) / 1000);
+
+    // Inyectamos el texto dinámico
+    document.getElementById("countdown-text").innerHTML = 
+      `Quedan <strong>${dias}d ${horas}h ${minutos}m ${segundos}s</strong> para mandar tus grupos.`;
+  }, 1000);
+}
+
+function cerrarPopup() {
+  const banner = document.getElementById('countdown-banner');
+  if (banner) banner.style.display = 'none'; // Se oculta temporalmente hasta que recarguen
 }
