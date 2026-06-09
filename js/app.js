@@ -92,6 +92,11 @@ function showTab(tabId, btnElement) {
   // 3. Activamos solo la pestaña y el botón que clickeamos
   document.getElementById(tabId).classList.add('active');
   btnElement.classList.add('active');
+  // Cerramos el menú dropdown si está abierto en el celular
+  const menu = document.getElementById('menu-tabs');
+  if (menu && menu.classList.contains('open')) {
+    menu.classList.remove('open');
+  }
 }
 
 // js/app.js (agregalo al final)
@@ -1170,4 +1175,9 @@ async function guardarExtras() {
     btn.innerText = 'Guardar Apuestas Random';
     btn.disabled = false;
   }
+}
+
+function toggleMenu() {
+  const menu = document.getElementById('menu-tabs');
+  menu.classList.toggle('open');
 }
