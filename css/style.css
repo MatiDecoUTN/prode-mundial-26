@@ -539,9 +539,10 @@ body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; color: #333;
    🎨 RENOVACIÓN ESTÉTICA: MUNDIAL 2026 PREMIUM
    =================================================== */
 
-/* 1. Fondo general apenas grisáceo para que las tarjetas blancas resalten */
+/* 1. Fondo general lavado (Azul/Lila muy pálido en armonía con la barra) */
 body, .screen {
-  background-color: #f0f4f8; 
+  background: linear-gradient(135deg, #e8edf5 0%, #efeaf6 100%);
+  background-attachment: fixed; /* El fondo queda fijo al escrolear */
 }
 
 /* 2. Barra superior con gradiente (Azul noche a Violeta oscuro) */
