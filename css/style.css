@@ -527,3 +527,9 @@ body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; color: #333;
   width: 100%;
   border-collapse: collapse;
 }
+
+/* Excepción: Las tablas de Ranking y Resultados Extras no necesitan estirarse */
+#tab-ranking .standings-table,
+#tab-extras .standings-table {
+  min-width: 100%;
+}
