@@ -1,6 +1,6 @@
 /* Reset básico y fuente */
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; color: #333; }
+body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #e8edf5 0%, #efeaf6 100%); background-attachment: fixed; color: #333; }
 
 /* ---------------------------------------------------
    LÓGICA CRÍTICA DE LA APP (Ocultar/Mostrar pantallas)
@@ -35,8 +35,8 @@ body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; color: #333;
    --------------------------------------------------- */
 .navbar { 
   display: flex; justify-content: space-between; align-items: center; 
-  background: white; padding: 15px 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-  position: sticky; top: 0; z-index: 1000; 
+  background: linear-gradient(135deg, #141e30 0%, #3f0071 100%); padding: 15px 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  position: sticky; top: 0; z-index: 1000; border-bottom: none;
 }
 
 .admin-nav { position: sticky; top: 0; z-index: 1000; }
@@ -48,10 +48,11 @@ body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; color: #333;
 .sub-content { display: none; }
 .sub-content.active { display: block; animation: fadeIn 0.3s; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-.nav-brand { font-weight: 800; font-size: 1.2rem; }
-.nav-username-text { font-weight: 600; margin-right: 15px; color: #0056b3; }
-.btn-logout { background: #f1f3f4; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; }
-.btn-logout:hover { background: #e8eaed; }
+
+.nav-brand { font-weight: 900; font-size: 1.2rem; color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.4); letter-spacing: 0.5px; }
+.nav-username-text { font-weight: 600; margin-right: 15px; color: #e0e0e0; }
+.btn-logout { background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid rgba(255, 255, 255, 0.3); padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+.btn-logout:hover { background: #e74c3c; border-color: #e74c3c; }
 
 /* ---------------------------------------------------
    ESTILOS DE LAS PESTAÑAS Y CONTENEDOR PRINCIPAL
@@ -71,10 +72,10 @@ body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; color: #333;
 .nav-tabs { display: flex; gap: 15px; }
 .nav-tab { 
   background: transparent; border: none; padding: 10px 15px; cursor: pointer; 
-  font-weight: 600; color: #666; border-bottom: 3px solid transparent; transition: all 0.2s;
+  font-weight: 600; color: rgba(255, 255, 255, 0.7); border-bottom: 3px solid transparent; transition: all 0.2s;
 }
-.nav-tab:hover { color: #0056b3; }
-.nav-tab.active { color: #0056b3; border-bottom-color: #0056b3; }
+.nav-tab:hover { color: #ffffff; background: rgba(255, 255, 255, 0.1); }
+.nav-tab.active { color: #ffffff; background: rgba(255, 255, 255, 0.15); border-bottom-color: #00ff88; }
 
 .tab-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
 
@@ -202,23 +203,23 @@ body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; color: #333;
 .inp-extra:focus { outline: none; border-color: #8e44ad; box-shadow: 0 0 0 2px rgba(142, 68, 173, 0.2); }
 
 /* ---------------------------------------------------
-   MENÚ RESPONSIVE (HAMBURGUESA)
+   MENÚ RESPONSIVE (HAMBURGUESA) - COLORES ACTUALIZADOS
    --------------------------------------------------- */
-.hamburger-btn { display: none; background: none; border: none; font-size: 1.8rem; color: #2c3e50; cursor: pointer; padding: 0 10px; }
+.hamburger-btn { display: none; background: none; border: none; font-size: 1.8rem; color: white; cursor: pointer; padding: 0 10px; }
 
 @media (max-width: 768px) {
   .hamburger-btn { display: block; }
   .nav-tabs {
     display: none; position: absolute; top: 60px; left: 0; width: 100%;
-    background: white; flex-direction: column; box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-    z-index: 1000; padding: 0;
+    background: #1c2833; border-bottom: 3px solid #3f0071; flex-direction: column;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1); z-index: 1000; padding: 0;
   }
   .nav-tabs.open { display: flex; }
   .nav-tabs .nav-tab, .nav-tabs .tab-btn {
     width: 100%; text-align: left; padding: 15px 20px; border-radius: 0;
-    border-bottom: 1px solid #f0f0f0; margin: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05); margin: 0; color: rgba(255, 255, 255, 0.85);
   }
-  .nav-tabs .nav-tab.active { background-color: #f8f9fa; border-left: 4px solid #8e44ad; }
+  .nav-tabs .nav-tab.active { background-color: #11181f; border-left: 4px solid #00ff88; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
 }
 
 /* ---------------------------------------------------
