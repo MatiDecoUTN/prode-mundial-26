@@ -533,3 +533,95 @@ body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; color: #333;
 #tab-extras .standings-table {
   min-width: 100%;
 }
+
+
+/* ===================================================
+   🎨 RENOVACIÓN ESTÉTICA: MUNDIAL 2026 PREMIUM
+   =================================================== */
+
+/* 1. Fondo general apenas grisáceo para que las tarjetas blancas resalten */
+body, .screen {
+  background-color: #f0f4f8; 
+}
+
+/* 2. Barra superior con gradiente (Azul noche a Violeta oscuro) */
+.navbar {
+  background: linear-gradient(135deg, #141e30 0%, #3f0071 100%);
+  border-bottom: none;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+/* Título del Prode brillante */
+.nav-brand {
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+/* Nombre de usuario */
+.nav-username-text {
+  color: #e0e0e0;
+  font-weight: 500;
+}
+
+/* 3. Pestañas en la computadora */
+.nav-tabs .nav-tab, 
+.nav-tabs .tab-btn {
+  color: rgba(255, 255, 255, 0.7);
+  background: transparent;
+  transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-tab:hover, 
+.nav-tabs .tab-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Pestaña activa (La que estás mirando ahora) */
+.nav-tabs .nav-tab.active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.15);
+  border-bottom: 3px solid #00ff88; /* Verde flúor futbolero */
+  font-weight: bold;
+}
+
+/* Botón de Salir */
+.btn-logout {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+}
+
+.btn-logout:hover {
+  background: #e74c3c; /* Rojo alerta al pasar el mouse */
+  border-color: #e74c3c;
+  color: white;
+}
+
+/* 4. Menú Hamburguesa y Pestañas en Celular */
+.hamburger-btn {
+  color: white; /* Icono ☰ en blanco */
+}
+
+@media (max-width: 768px) {
+  .nav-tabs {
+    /* El fondo del desplegable en el celu */
+    background: #1c2833; 
+    border-bottom: 3px solid #3f0071;
+  }
+  
+  .nav-tabs .nav-tab, 
+  .nav-tabs .tab-btn {
+    color: rgba(255, 255, 255, 0.85);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .nav-tabs .nav-tab.active {
+    background-color: #11181f;
+    border-left: 4px solid #00ff88;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+}
