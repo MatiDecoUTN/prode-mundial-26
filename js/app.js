@@ -944,7 +944,7 @@ function abrirPerfilJugador(username) {
       <div class="modal-content" style="max-width: 600px;" onclick="event.stopPropagation()">
         <div class="modal-header">
           <div>
-            <div class="modal-title">👤 Perfil de ${nombreAMostrar} <span style="font-size: 0.9rem; color: #666; font-weight: normal;">(${username})</span></div>
+            <div class="modal-title">👤 Perfil de ${username} <span style="font-size: 0.9rem; color: #666; font-weight: normal;">(${nombreAMostrar})</span></div>
             <div style="font-size: 0.9rem; color: #0056b3; font-weight: 700; margin-top: 4px;">Puntos totales: ${pts} pts</div>
           </div>
           <button class="modal-close" onclick="document.getElementById('perfil-modal').remove()">&times;</button>
