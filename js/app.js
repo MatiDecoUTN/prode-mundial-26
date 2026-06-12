@@ -935,12 +935,16 @@ function abrirPerfilJugador(username) {
   const pts = userRank ? userRank.puntos : 0;
   const esPropio = username.toLowerCase() === currentUser.username.toLowerCase();
 
+  // 1. BUSCAMOS EL NOMBRE REAL EN LA BASE DE DATOS
+  const datosUsuario = appData.jugadores.find(j => j.usuario.toLowerCase() === username.toLowerCase());
+  const nombreAMostrar = (datosUsuario && datosUsuario.nombreReal) ? datosUsuario.nombreReal : username;
+
   let html = `
     <div class="modal-overlay" id="perfil-modal" onclick="cerrarPerfil(event)">
       <div class="modal-content" style="max-width: 600px;" onclick="event.stopPropagation()">
         <div class="modal-header">
           <div>
-            <div class="modal-title">👤 Perfil de ${username}</div>
+            <div class="modal-title">👤 Perfil de ${nombreAMostrar} <span style="font-size: 0.9rem; color: #666; font-weight: normal;">(${username})</span></div>
             <div style="font-size: 0.9rem; color: #0056b3; font-weight: 700; margin-top: 4px;">Puntos totales: ${pts} pts</div>
           </div>
           <button class="modal-close" onclick="document.getElementById('perfil-modal').remove()">&times;</button>
@@ -948,7 +952,7 @@ function abrirPerfilJugador(username) {
         <div class="modal-body" style="background-color: #f0f2f5; padding: 15px;">
   `;
 
-  // 1. DIBUJAMOS LA FASE DE GRUPOS
+  // 3. DIBUJAMOS LA FASE DE GRUPOS (Esto te queda exactamente igual que antes)
   html += `<h2 style="text-align: center; margin-bottom: 20px; color: #333; font-size: 1.3rem;">Fase de Grupos</h2>`;
   
   if (appData.fases.grupos && !esPropio) {
