@@ -546,17 +546,19 @@ function renderResultadosOficiales() {
           ` : `<div class="user-prediction-badge missing">No cargaste pronóstico</div>`}
           
           ${appData.fases[getFaseKeyDePartidoFrontend(p.id)] === false ? `
-            <div class="others-box">
-              <div class="others-title">📋 Pronósticos del grupo:</div>
+            <button onclick="togglePronosticos(this, ${p.id})" style="background: #f1f3f4; border: none; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: #555; cursor: pointer; margin-top: 5px; width: 100%; transition: background 0.2s;">
+              Ver pronósticos del grupo ⬇️
+            </button>
+            <div id="others-match-${p.id}" class="others-box hidden" style="margin-top: 8px;">
               <div class="others-grid">
                 ${appData.jugadores
                   .filter(j => j.rol !== 'admin' && j.usuario.toLowerCase() !== currentUser.username.toLowerCase())
                   .map(j => {
                     let op = appData.pronosticosOtros[p.id] ? appData.pronosticosOtros[p.id].find(o => o.jugador.toLowerCase() === j.usuario.toLowerCase()) : null;
                     if (op) {
-                      return `<div class="other-user-chip"><span class="other-name">${j.usuario}:</span> <span class="other-score">${op.gL}-${op.gV}</span></div>`;
+                      return \`<div class="other-user-chip"><span class="other-name">\${j.usuario}:</span> <span class="other-score">\${op.gL}-\${op.gV}</span></div>\`;
                     } else {
-                      return `<div class="other-user-chip missing"><span class="other-name">${j.usuario}:</span> <span class="other-score">Sin cargar</span></div>`;
+                      return \`<div class="other-user-chip missing"><span class="other-name">\${j.usuario}:</span> <span class="other-score">Sin cargar</span></div>\`;
                     }
                 }).join('')}
               </div>
@@ -598,17 +600,19 @@ function renderResultadosOficiales() {
           ` : `<div class="user-prediction-badge missing">No cargaste pronóstico</div>`}
           
           ${appData.fases[getFaseKeyDePartidoFrontend(p.id)] === false ? `
-            <div class="others-box">
-              <div class="others-title">📋 Pronósticos del grupo:</div>
+            <button onclick="togglePronosticos(this, ${p.id})" style="background: #f1f3f4; border: none; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: #555; cursor: pointer; margin-top: 5px; width: 100%; transition: background 0.2s;">
+              Ver pronósticos del grupo ⬇️
+            </button>
+            <div id="others-match-${p.id}" class="others-box hidden" style="margin-top: 8px;">
               <div class="others-grid">
                 ${appData.jugadores
                   .filter(j => j.rol !== 'admin' && j.usuario.toLowerCase() !== currentUser.username.toLowerCase())
                   .map(j => {
                     let op = appData.pronosticosOtros[p.id] ? appData.pronosticosOtros[p.id].find(o => o.jugador.toLowerCase() === j.usuario.toLowerCase()) : null;
                     if (op) {
-                      return `<div class="other-user-chip"><span class="other-name">${j.usuario}:</span> <span class="other-score">${op.gL}-${op.gV}</span></div>`;
+                      return \`<div class="other-user-chip"><span class="other-name">\${j.usuario}:</span> <span class="other-score">\${op.gL}-\${op.gV}</span></div>\`;
                     } else {
-                      return `<div class="other-user-chip missing"><span class="other-name">${j.usuario}:</span> <span class="other-score">Sin cargar</span></div>`;
+                      return \`<div class="other-user-chip missing"><span class="other-name">\${j.usuario}:</span> <span class="other-score">Sin cargar</span></div>\`;
                     }
                 }).join('')}
               </div>
