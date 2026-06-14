@@ -1244,3 +1244,20 @@ function cerrarPopup() {
   const banner = document.getElementById('countdown-banner');
   if (banner) banner.style.display = 'none'; // Se oculta temporalmente hasta que recarguen
 }
+
+// Función para mostrar/ocultar los pronósticos del resto en la pestaña Resultados
+function togglePronosticos(btn, partidoId) {
+  const container = document.getElementById(`others-match-${partidoId}`);
+  if (container) {
+    const isHidden = container.classList.contains('hidden');
+    if (isHidden) {
+      container.classList.remove('hidden');
+      btn.innerHTML = 'Ocultar pronósticos ⬆️';
+      btn.style.background = '#e2e6ea'; // Un gris apenitas más oscuro al abrir
+    } else {
+      container.classList.add('hidden');
+      btn.innerHTML = 'Ver pronósticos del grupo ⬇️';
+      btn.style.background = '#f1f3f4';
+    }
+  }
+}
