@@ -528,7 +528,11 @@ function renderResultadosOficiales() {
       if (p.local && !equiposGrupo.includes(p.local)) equiposGrupo.push(p.local);
       if (p.visitante && !equiposGrupo.includes(p.visitante)) equiposGrupo.push(p.visitante);
     });
-    const listaEquiposTexto = equiposGrupo.join(' - ');
+
+    // NUEVO: Mapeamos los equipos para inyectarles su bandera al lado usando inline-flex
+    const listaEquiposHTML = equiposGrupo.map(eq => {
+      return `<span style="display: inline-flex; align-items: center; gap: 4px;">${getBandera(eq)} ${eq}</span>`;
+    }).join('<span style="opacity: 0.4; margin: 0 4px;">·</span>');
 
     // Creamos la estructura del acordeón para el grupo entero
     const groupWrapper = document.createElement('div');
@@ -536,7 +540,9 @@ function renderResultadosOficiales() {
     groupWrapper.innerHTML = `
       <button onclick="toggleGrupoContent('${letraGrupo}')" class="group-title" style="width: 100%; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 15px; cursor: pointer; border: none; border-radius: 8px; outline: none;">
         <span id="btn-text-grupo-${letraGrupo}" style="font-size: 1.1rem; font-weight: 800; letter-spacing: 1px;">GRUPO ${letraGrupo} ⬇️</span>
-        <span style="font-size: 0.8rem; font-weight: 500; margin-top: 4px; opacity: 0.85; text-transform: none; letter-spacing: 0;">(${listaEquiposTexto})</span>
+        <span style="font-size: 0.8rem; font-weight: 500; margin-top: 6px; opacity: 0.9; text-transform: none; letter-spacing: 0; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px;">
+          ${listaEquiposHTML}
+        </span>
       </button>
       <div id="content-grupo-${letraGrupo}" class="hidden" style="margin-top: 15px;"></div>
     `;
@@ -604,6 +610,77 @@ function renderResultadosOficiales() {
       `;
       groupContentContainer.appendChild(card);
     });
+
+    // Inyectamos la tabla de posiciones real abajo de los partidos del grupo
+    const divTabla = document.createElement('div'); 
+    divTabla.innerHTML = generarTablaRealHTML(partidosGrupo); 
+    groupContentContainer.appendChild(divTabla);
+  }
+
+  // --- 2. DIBUJAMOS LAS ELIMINATORIAS ---
+  rondasFase2.forEach(ronda => {
+    const partidosRonda = appData.partidos.filter(p => p.id >= ronda.min && p.id <= ronda.max);
+    if (partidosRonda.length === 0) return;
+    const title = document.createElement('h3'); title.className = 'group-title'; title.style.backgroundColor = "#8e44ad"; title.innerText = ronda.nombre;
+    contElims.appendChild(title);
+    
+    partidosRonda.forEach(p => {
+      let ptsGanados = 0; let tieneProde = appData.misPronosticos[p.id];
+      if (p.golesL !== null && p.golesV !== null && tieneProde) { ptsGanados = calcularPuntosEnFrente(tieneProde.gL, tieneProde.gV, p.golesL, p.golesV); puntosTotalesJugador += ptsGanados; }
+      const card = document.createElement('div'); card.className = `match-card ${p.golesL !== null ? 'partido-jugado' : ''}`;
+      
+      let htmlOthers = '';
+      if (appData.fases[getFaseKeyDePartidoFrontend(p.id)] === false) {
+         let chipsOthers = appData.jugadores
+              .filter(j => j.rol !== 'admin' && j.usuario.toLowerCase() !== currentUser.username.toLowerCase())
+              .map(j => {
+                let op = appData.pronosticosOtros[p.id] ? appData.pronosticosOtros[p.id].find(o => o.jugador.toLowerCase() === j.usuario.toLowerCase()) : null;
+                if (op) {
+                  return `<div class="other-user-chip"><span class="other-name">${j.usuario}:</span> <span class="other-score">${op.gL}-${op.gV}</span></div>`;
+                } else {
+                  return `<div class="other-user-chip missing"><span class="other-name">${j.usuario}:</span> <span class="other-score">Sin cargar</span></div>`;
+                }
+            }).join('');
+            
+         htmlOthers = `
+            <button onclick="togglePronosticos(this, ${p.id})" style="background: #f1f3f4; border: none; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: #555; cursor: pointer; margin-top: 5px; width: 100%; transition: background 0.2s;">
+              👀 Ver pronósticos del grupo ⬇️
+            </button>
+            <div id="others-match-${p.id}" class="others-box hidden" style="margin-top: 8px;">
+              <div class="others-grid">
+                ${chipsOthers}
+              </div>
+            </div>
+         `;
+      }
+
+      card.innerHTML = `
+        <div class="match-header">${generarEncabezadoPartido(p)}</div>
+        <div class="match-body">
+          <div class="team local">${p.local} <span class="flag">${getBandera(p.local)}</span></div>
+          <div class="score-display">
+            <span class="score-num">${p.golesL !== null ? p.golesL : '-'}</span>
+            <span class="vs">:</span>
+            <span class="score-num">${p.golesV !== null ? p.golesV : '-'}</span>
+          </div>
+          <div class="team visitante"><span class="flag">${getBandera(p.visitante)}</span> ${p.visitante}</div>
+        </div>
+        
+        <div class="prediction-row-container" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #eee;">
+          ${tieneProde ? `
+            <div style="font-size: 0.85rem; color: #555; text-align: center;">
+              Tu prode: <strong>${tieneProde.gL}-${tieneProde.gV}</strong> | <span style="color: ${ptsGanados > 0 ? '#137333' : '#666'}; font-weight: 700;">+${ptsGanados} pts</span>
+            </div>
+          ` : `<div class="user-prediction-badge missing">No cargaste pronóstico</div>`}
+          
+          ${htmlOthers}
+        </div>
+      `;
+      contElims.appendChild(card);
+    });
+  });
+  document.getElementById('prode-pts-badge').innerText = `🏆 Mis Puntos: ${puntosTotalesJugador} pts`;
+}
 
     // Inyectamos la tabla de posiciones real abajo de los partidos del grupo
     const divTabla = document.createElement('div'); 
