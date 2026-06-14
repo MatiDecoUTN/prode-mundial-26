@@ -162,7 +162,7 @@ async function fetchAppDatos() {
       // Lógica de usuario común...
       document.getElementById('screen-app').classList.add('active');
       document.getElementById('nav-username').innerText = currentUser.username;
-      renderMisPronosticos(); ultadosOficiales(); renderRankingGeneral();
+      renderMisPronosticos(); renderResultadosOficiales(); renderRankingGeneral();
       renderPremiosRandom(); // <-- Sumar esta línea
       iniciarContadorRegresivo();
     }
