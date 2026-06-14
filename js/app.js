@@ -162,7 +162,7 @@ async function fetchAppDatos() {
       // Lógica de usuario común...
       document.getElementById('screen-app').classList.add('active');
       document.getElementById('nav-username').innerText = currentUser.username;
-      renderMisPronosticos(); renderResultadosOficiales(); renderRankingGeneral();
+      renderMisPronosticos(); ultadosOficiales(); renderRankingGeneral();
       renderPremiosRandom(); // <-- Sumar esta línea
       iniciarContadorRegresivo();
     }
@@ -516,20 +516,45 @@ function renderResultadosOficiales() {
   const contElims = document.getElementById('sub-resultados-elims');
   let puntosTotalesJugador = 0;
 
-  // --- 1. DIBUJAMOS LA FASE DE GRUPOS ---
+  // --- 1. DIBUJAMOS LA FASE DE GRUPOS COLAPSABLE ---
   for (let i = 0; i < 12; i++) {
     const letraGrupo = String.fromCharCode(65 + i);
     const partidosGrupo = appData.partidos.filter(p => p.id > (i * 6) && p.id <= ((i + 1) * 6));
     if (partidosGrupo.length === 0) continue;
-    const title = document.createElement('h3'); title.className = 'group-title'; title.innerText = `Grupo ${letraGrupo}`;
-    contGrupos.appendChild(title);
+
+    // Obtenemos los equipos únicos de este grupo para listarlos en el botón
+    let equiposGrupo = [];
+    partidosGrupo.forEach(p => {
+      if (p.local && !equiposGrupo.includes(p.local)) equiposGrupo.push(p.local);
+      if (p.visitante && !equiposGrupo.includes(p.visitante)) equiposGrupo.push(p.visitante);
+    });
+    const listaEquiposTexto = equiposGrupo.join(' - ');
+
+    // Creamos la estructura del acordeón para el grupo entero
+    const groupWrapper = document.createElement('div');
+    groupWrapper.style.marginBottom = '20px';
+    groupWrapper.innerHTML = `
+      <button onclick="toggleGrupoContent('${letraGrupo}')" class="group-title" style="width: 100%; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 15px; cursor: pointer; border: none; border-radius: 8px; outline: none;">
+        <span id="btn-text-grupo-${letraGrupo}" style="font-size: 1.1rem; font-weight: 800; letter-spacing: 1px;">GRUPO ${letraGrupo} ⬇️</span>
+        <span style="font-size: 0.8rem; font-weight: 500; margin-top: 4px; opacity: 0.85; text-transform: none; letter-spacing: 0;">(${listaEquiposTexto})</span>
+      </button>
+      <div id="content-grupo-${letraGrupo}" class="hidden" style="margin-top: 15px;"></div>
+    `;
     
+    contGrupos.appendChild(groupWrapper);
+    const groupContentContainer = document.getElementById(`content-grupo-${letraGrupo}`);
+
+    // Inyectamos los partidos adentro del bloque del grupo
     partidosGrupo.forEach(p => {
       let ptsGanados = 0; let tieneProde = appData.misPronosticos[p.id];
-      if (p.golesL !== null && p.golesV !== null && tieneProde) { ptsGanados = calcularPuntosEnFrente(tieneProde.gL, tieneProde.gV, p.golesL, p.golesV); puntosTotalesJugador += ptsGanados; }
-      const card = document.createElement('div'); card.className = `match-card ${p.golesL !== null ? 'partido-jugado' : ''}`;
+      if (p.golesL !== null && p.golesV !== null && tieneProde) { 
+        ptsGanados = calcularPuntosEnFrente(tieneProde.gL, tieneProde.gV, p.golesL, p.golesV); 
+        puntosTotalesJugador += ptsGanados; 
+      }
       
-      // GENERAMOS EL HTML DE LOS OTROS ACÁ AFUERA PARA NO ROMPER EL STRING
+      const card = document.createElement('div'); 
+      card.className = `match-card ${p.golesL !== null ? 'partido-jugado' : ''}`;
+      
       let htmlOthers = '';
       if (appData.fases[getFaseKeyDePartidoFrontend(p.id)] === false) {
          let chipsOthers = appData.jugadores
@@ -577,12 +602,16 @@ function renderResultadosOficiales() {
           ${htmlOthers}
         </div>
       `;
-      contGrupos.appendChild(card);
+      groupContentContainer.appendChild(card);
     });
-    const divTabla = document.createElement('div'); divTabla.innerHTML = generarTablaRealHTML(partidosGrupo); contGrupos.appendChild(divTabla);
+
+    // Inyectamos la tabla de posiciones real abajo de los partidos del grupo
+    const divTabla = document.createElement('div'); 
+    divTabla.innerHTML = generarTablaRealHTML(partidosGrupo); 
+    groupContentContainer.appendChild(divTabla);
   }
 
-  // --- 2. DIBUJAMOS LAS ELIMINATORIAS ---
+  // --- 2. DIBUJAMOS LAS ELIMINATORIAS (Se mantienen visibles y ordenadas) ---
   rondasFase2.forEach(ronda => {
     const partidosRonda = appData.partidos.filter(p => p.id >= ronda.min && p.id <= ronda.max);
     if (partidosRonda.length === 0) return;
@@ -594,7 +623,6 @@ function renderResultadosOficiales() {
       if (p.golesL !== null && p.golesV !== null && tieneProde) { ptsGanados = calcularPuntosEnFrente(tieneProde.gL, tieneProde.gV, p.golesL, p.golesV); puntosTotalesJugador += ptsGanados; }
       const card = document.createElement('div'); card.className = `match-card ${p.golesL !== null ? 'partido-jugado' : ''}`;
       
-      // GENERAMOS EL HTML DE LOS OTROS ACÁ AFUERA PARA NO ROMPER EL STRING
       let htmlOthers = '';
       if (appData.fases[getFaseKeyDePartidoFrontend(p.id)] === false) {
          let chipsOthers = appData.jugadores
@@ -1284,6 +1312,21 @@ function togglePronosticos(btn, partidoId) {
       container.classList.add('hidden');
       btn.innerHTML = 'Ver pronósticos del grupo ⬇️';
       btn.style.background = '#f1f3f4';
+    }
+  }
+}
+
+function toggleGrupoContent(letra) {
+  const container = document.getElementById(`content-grupo-${letra}`);
+  const btnText = document.getElementById(`btn-text-grupo-${letra}`);
+  if (container) {
+    const isHidden = container.classList.contains('hidden');
+    if (isHidden) {
+      container.classList.remove('hidden');
+      if (btnText) btnText.innerText = `GRUPO ${letra} ⬆️`;
+    } else {
+      container.classList.add('hidden');
+      if (btnText) btnText.innerText = `GRUPO ${letra} ⬇️`;
     }
   }
 }
