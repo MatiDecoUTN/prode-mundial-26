@@ -1368,7 +1368,7 @@ function renderGraficoEvolucion() {
     .filter(p => p.golesL !== null && p.golesV !== null)
     .sort((a, b) => a.id - b.id);
 
-  if (partidosJugados.length === 0) return; // Si no empezó el mundial, no hay gráfico
+  if (partidosJugados.length === 0) return; 
 
   // 2. Inicializamos el historial para cada jugador
   let usuarios = appData.jugadores.filter(j => j.rol !== 'admin').map(j => j.usuario);
@@ -1377,20 +1377,18 @@ function renderGraficoEvolucion() {
 
   let labelsX = [];
 
-  // 3. Máquina del tiempo: Simulamos el torneo partido a partido
+  // 3. Máquina del tiempo
   partidosJugados.forEach((p) => {
-    labelsX.push(`P${p.id}`); // El eje X será "P1", "P2", etc.
+    labelsX.push(`P${p.id}`); 
 
     usuarios.forEach(u => {
       let uLower = u.toLowerCase();
       let op = null;
-      
       if (uLower === currentUser.username.toLowerCase()) {
         op = appData.misPronosticos[p.id];
       } else if (appData.pronosticosOtros[p.id]) {
         op = appData.pronosticosOtros[p.id].find(o => o.jugador.toLowerCase() === uLower);
       }
-
       if (op && op.gL !== "" && op.gV !== "") {
         let pts = calcularPuntosEnFrente(op.gL, op.gV, p.golesL, p.golesV);
         historial[u].pts += pts;
@@ -1398,26 +1396,19 @@ function renderGraficoEvolucion() {
       }
     });
 
-    let snapshot = usuarios.map(u => ({
-      usuario: u,
-      pts: historial[u].pts,
-      exactos: historial[u].exactos
-    }));
-    
-    // Ordenamos la foto de ese momento
+    let snapshot = usuarios.map(u => ({ usuario: u, pts: historial[u].pts, exactos: historial[u].exactos }));
     snapshot.sort((a, b) => b.pts - a.pts || b.exactos - a.exactos);
-
+    
     snapshot.forEach((snap, indexPos) => {
       historial[snap.usuario].posiciones.push(indexPos + 1);
       historial[snap.usuario].puntosEje.push(snap.pts);
     });
   });
 
-  // --- 🌟 MAGIA NUEVA: Calculamos quiénes conforman el Top 3 actual ---
   let rankingFinal = [...usuarios].sort((a, b) => {
     return (historial[b].pts - historial[a].pts) || (historial[b].exactos - historial[a].exactos);
   });
-  let top3 = rankingFinal.slice(0, 3); // Agarramos solo los 3 primeros
+  let top3 = rankingFinal.slice(0, 3); 
 
   // 4. Preparamos los datasets para Chart.js
   const datasets = usuarios.map((u, i) => {
@@ -1425,9 +1416,7 @@ function renderGraficoEvolucion() {
     const color = `hsl(${hue}, 70%, 50%)`;
     const isMe = u.toLowerCase() === currentUser.username.toLowerCase();
     
-    // Comprobamos si el usuario actual está en el Top 3
     const isTop3 = top3.includes(u);
-    // Solo mostramos encendidas la línea propia y las del podio
     const showByDefault = isMe || isTop3;
 
     return {
@@ -1436,11 +1425,11 @@ function renderGraficoEvolucion() {
       puntosAnexados: historial[u].puntosEje, 
       borderColor: isMe ? '#11181f' : color, 
       borderWidth: isMe ? 4 : 2,
-      tension: 0.4, 
+      tension: 0, // <-- 1. LÍNEAS TOTALMENTE RECTAS
       pointRadius: isMe ? 4 : 0, 
       pointHoverRadius: 6,
       backgroundColor: 'transparent',
-      hidden: !showByDefault // <-- Esto apaga el resto de las líneas al inicio
+      hidden: !showByDefault 
     };
   });
 
@@ -1456,12 +1445,21 @@ function renderGraficoEvolucion() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: {
+        padding: {
+          top: 25,    // <-- 2. ESPACIO ARRIBA PARA QUE EL PUESTO 1 NO SE CORTE
+          bottom: 20
+        }
+      },
       scales: {
         y: {
-          reverse: true, // El 1er puesto va arriba
+          reverse: true, 
           min: 1,
           max: usuarios.length,
-          ticks: { stepSize: 1 }
+          ticks: { 
+            stepSize: 1,       // <-- 3. GRANULARIDAD DE A 1
+            autoSkip: false    // <-- Forzamos a que el navegador muestre todos los números de puesto
+          }
         }
       },
       plugins: {
@@ -1470,19 +1468,54 @@ function renderGraficoEvolucion() {
           labels: { 
             usePointStyle: true, 
             boxWidth: 8,
-            padding: 15
+            padding: 15,
+            // <-- 4. ESTÉTICA DE LA LEYENDA MEJORADA (Sin tachado, solo gris clarito)
+            generateLabels: function(chart) {
+              const datasets = chart.data.datasets;
+              return datasets.map((dataset, i) => {
+                const isHidden = !chart.isDatasetVisible(i);
+                return {
+                  text: dataset.label,
+                  fillStyle: isHidden ? '#e0e0e0' : dataset.borderColor, // Cuadradito gris
+                  hidden: isHidden,
+                  datasetIndex: i,
+                  fontColor: isHidden ? '#b0b0b0' : '#333', // Texto gris clarito si está apagado
+                  textDecoration: 'none' // Le sacamos el tachado feo
+                };
+              });
+            }
+          },
+          onClick: function(e, legendItem, legend) {
+            const index = legendItem.datasetIndex;
+            const ci = legend.chart;
+            if (ci.isDatasetVisible(index)) ci.hide(index);
+            else ci.show(index);
           }
         },
         tooltip: {
           mode: 'index',
           intersect: false,
+          // <-- 5. ORDENAMIENTO INTELIGENTE DEL TOOLTIP (El 1° arriba de todo siempre)
+          itemSort: function(a, b) {
+            return a.parsed.y - b.parsed.y;
+          },
           callbacks: {
+            title: function(context) {
+              return 'Resultados tras el ' + context[0].label;
+            },
+            // <-- 6. TEXTO MÁS LIMPIO Y MEDALLAS PARA EL PODIO
             label: function(context) {
               let user = context.dataset.label;
               let pos = context.parsed.y;
               let index = context.dataIndex;
               let pts = context.dataset.puntosAnexados[index];
-              return `${user}: Pos ${pos} (${pts} pts)`;
+              
+              let medalla = '';
+              if (pos === 1) medalla = '🥇 ';
+              if (pos === 2) medalla = '🥈 ';
+              if (pos === 3) medalla = '🥉 ';
+              
+              return `${medalla}#${pos} - ${user}: ${pts} pts`;
             }
           }
         }
