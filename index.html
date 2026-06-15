@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Prode Mundial 2026</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="css/style.css"/>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -86,7 +87,29 @@
     <!-- TAB RANKING -->
     <div id="tab-ranking" class="tab-content">
       <div class="tab-header"><h2>🏆 Ranking General</h2></div>
+      <div id="tab-ranking" class="tab-content">
+      <div class="tab-header"><h2>🏆 Ranking General</h2></div>
+      
+      <button onclick="toggleGrafico()" style="width: 100%; background: #2c3e50; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; margin-bottom: 20px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        📈 Ver Gráfico Histórico de Posiciones
+      </button>
+      
+      <div id="grafico-wrapper" class="hidden" style="margin-bottom: 30px; background: white; border-radius: 8px; border: 1px solid #eee; padding: 15px;">
+        <p style="font-size: 0.9rem; color: #0056b3; text-align: center; margin-bottom: 5px; font-weight: bold;">
+          💡 Tocá los nombres arriba del gráfico para encender o apagar jugadores.
+        </p>
+        <p style="font-size: 0.8rem; color: #666; text-align: center; margin-bottom: 15px;">
+          (Por defecto solo se muestra el Top 3 y tu propia curva. Deslizá a los costados para ver más partidos ↔️)
+        </p>
+        <div style="width: 100%; overflow-x: auto;">
+          <div style="min-width: 800px; height: 500px;">
+            <canvas id="rankingChart"></canvas>
+          </div>
+        </div>
+      </div>
+
       <div id="ranking-container"></div>
+    </div>
     </div>
 
     <!-- TAB INFO -->

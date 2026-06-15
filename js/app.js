@@ -719,7 +719,9 @@ function renderRankingGeneral() {
   });
   html += `</tbody></table></div>`;
   container.innerHTML = html;
-}
+  // Llama a la generación del gráfico
+  renderGraficoEvolucion();
+} // <-- Esta es la llave de cierre que ya tenés en renderRankingGeneral
 
 // Función auxiliar en JS para pintar los puntos individuales por tarjeta
 function calcularPuntosEnFrente(pL, pV, rL, rV) {
@@ -1338,3 +1340,148 @@ function toggleGrupoContent(letra) {
     }
   }
 }
+
+
+let rankingChartInstance = null; // Guardamos la instancia para destruirla si se recarga
+
+function renderGraficoEvolucion() {
+  const ctx = document.getElementById('rankingChart').getContext('2d');
+  
+  // 1. Filtramos y ordenamos cronológicamente los partidos que YA terminaron
+  const partidosJugados = appData.partidos
+    .filter(p => p.golesL !== null && p.golesV !== null)
+    .sort((a, b) => a.id - b.id);
+
+  if (partidosJugados.length === 0) return; // Si no empezó el mundial, no hay gráfico
+
+  // 2. Inicializamos el historial para cada jugador
+  let usuarios = appData.jugadores.filter(j => j.rol !== 'admin').map(j => j.usuario);
+  let historial = {};
+  usuarios.forEach(u => historial[u] = { pts: 0, exactos: 0, posiciones: [], puntosEje: [] });
+
+  let labelsX = [];
+
+  // 3. Máquina del tiempo: Simulamos el torneo partido a partido
+  partidosJugados.forEach((p) => {
+    labelsX.push(`P${p.id}`); // El eje X será "P1", "P2", etc.
+
+    usuarios.forEach(u => {
+      let uLower = u.toLowerCase();
+      let op = null;
+      
+      if (uLower === currentUser.username.toLowerCase()) {
+        op = appData.misPronosticos[p.id];
+      } else if (appData.pronosticosOtros[p.id]) {
+        op = appData.pronosticosOtros[p.id].find(o => o.jugador.toLowerCase() === uLower);
+      }
+
+      if (op && op.gL !== "" && op.gV !== "") {
+        let pts = calcularPuntosEnFrente(op.gL, op.gV, p.golesL, p.golesV);
+        historial[u].pts += pts;
+        if (pts === 7) historial[u].exactos += 1;
+      }
+    });
+
+    let snapshot = usuarios.map(u => ({
+      usuario: u,
+      pts: historial[u].pts,
+      exactos: historial[u].exactos
+    }));
+    
+    // Ordenamos la foto de ese momento
+    snapshot.sort((a, b) => b.pts - a.pts || b.exactos - a.exactos);
+
+    snapshot.forEach((snap, indexPos) => {
+      historial[snap.usuario].posiciones.push(indexPos + 1);
+      historial[snap.usuario].puntosEje.push(snap.pts);
+    });
+  });
+
+  // --- 🌟 MAGIA NUEVA: Calculamos quiénes conforman el Top 3 actual ---
+  let rankingFinal = [...usuarios].sort((a, b) => {
+    return (historial[b].pts - historial[a].pts) || (historial[b].exactos - historial[a].exactos);
+  });
+  let top3 = rankingFinal.slice(0, 3); // Agarramos solo los 3 primeros
+
+  // 4. Preparamos los datasets para Chart.js
+  const datasets = usuarios.map((u, i) => {
+    const hue = (i * 137.508) % 360; 
+    const color = `hsl(${hue}, 70%, 50%)`;
+    const isMe = u.toLowerCase() === currentUser.username.toLowerCase();
+    
+    // Comprobamos si el usuario actual está en el Top 3
+    const isTop3 = top3.includes(u);
+    // Solo mostramos encendidas la línea propia y las del podio
+    const showByDefault = isMe || isTop3;
+
+    return {
+      label: u,
+      data: historial[u].posiciones,
+      puntosAnexados: historial[u].puntosEje, 
+      borderColor: isMe ? '#11181f' : color, 
+      borderWidth: isMe ? 4 : 2,
+      tension: 0.4, 
+      pointRadius: isMe ? 4 : 0, 
+      pointHoverRadius: 6,
+      backgroundColor: 'transparent',
+      hidden: !showByDefault // <-- Esto apaga el resto de las líneas al inicio
+    };
+  });
+
+  if (rankingChartInstance) rankingChartInstance.destroy();
+
+  // 5. Dibujamos el Chart
+  rankingChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labelsX,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          reverse: true, // El 1er puesto va arriba
+          min: 1,
+          max: usuarios.length,
+          ticks: { stepSize: 1 }
+        }
+      },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { 
+            usePointStyle: true, 
+            boxWidth: 8,
+            padding: 15
+          }
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: function(context) {
+              let user = context.dataset.label;
+              let pos = context.parsed.y;
+              let index = context.dataIndex;
+              let pts = context.dataset.puntosAnexados[index];
+              return `${user}: Pos ${pos} (${pts} pts)`;
+            }
+          }
+        }
+      },
+      interaction: {
+        mode: 'nearest',
+        axis: 'x',
+        intersect: false
+      }
+    }
+  });
+}
+
+function toggleGrafico() {
+  const wrapper = document.getElementById('grafico-wrapper');
+  wrapper.classList.toggle('hidden');
+}
+
