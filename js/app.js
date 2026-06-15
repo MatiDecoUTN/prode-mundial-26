@@ -1360,24 +1360,23 @@ function toggleGrupoContent(letra) {
 
 let rankingChartInstance = null; // Guardamos la instancia para destruirla si se recarga
 
+
 function renderGraficoEvolucion() {
   const ctx = document.getElementById('rankingChart').getContext('2d');
   
-  // 1. Filtramos y ordenamos cronológicamente los partidos que YA terminaron
   const partidosJugados = appData.partidos
     .filter(p => p.golesL !== null && p.golesV !== null)
     .sort((a, b) => a.id - b.id);
 
   if (partidosJugados.length === 0) return; 
 
-  // 2. Inicializamos el historial para cada jugador
   let usuarios = appData.jugadores.filter(j => j.rol !== 'admin').map(j => j.usuario);
   let historial = {};
   usuarios.forEach(u => historial[u] = { pts: 0, exactos: 0, posiciones: [], puntosEje: [] });
 
   let labelsX = [];
 
-  // 3. Máquina del tiempo
+  // Máquina del tiempo
   partidosJugados.forEach((p) => {
     labelsX.push(`P${p.id}`); 
 
@@ -1410,7 +1409,6 @@ function renderGraficoEvolucion() {
   });
   let top3 = rankingFinal.slice(0, 3); 
 
-  // 4. Preparamos los datasets para Chart.js
   const datasets = usuarios.map((u, i) => {
     const hue = (i * 137.508) % 360; 
     const color = `hsl(${hue}, 70%, 50%)`;
@@ -1425,7 +1423,7 @@ function renderGraficoEvolucion() {
       puntosAnexados: historial[u].puntosEje, 
       borderColor: isMe ? '#11181f' : color, 
       borderWidth: isMe ? 4 : 2,
-      tension: 0, // <-- 1. LÍNEAS TOTALMENTE RECTAS
+      tension: 0, 
       pointRadius: isMe ? 4 : 0, 
       pointHoverRadius: 6,
       backgroundColor: 'transparent',
@@ -1435,7 +1433,6 @@ function renderGraficoEvolucion() {
 
   if (rankingChartInstance) rankingChartInstance.destroy();
 
-  // 5. Dibujamos el Chart
   rankingChartInstance = new Chart(ctx, {
     type: 'line',
     data: {
@@ -1445,20 +1442,17 @@ function renderGraficoEvolucion() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: {
-        padding: {
-          top: 25,    // <-- 2. ESPACIO ARRIBA PARA QUE EL PUESTO 1 NO SE CORTE
-          bottom: 20
-        }
-      },
       scales: {
         y: {
           reverse: true, 
-          min: 1,
-          max: usuarios.length,
+          min: 0.5, // 1. TRUCO DEL TECHO: Empuja el #1 hacia abajo para que no se corte
+          max: usuarios.length + 0.5,
           ticks: { 
-            stepSize: 1,       // <-- 3. GRANULARIDAD DE A 1
-            autoSkip: false    // <-- Forzamos a que el navegador muestre todos los números de puesto
+            stepSize: 1, 
+            // 2. Ocultamos el '0.5' y mostramos solo enteros limpios
+            callback: function(value) {
+              if (value % 1 === 0) return value;
+            }
           }
         }
       },
@@ -1469,22 +1463,23 @@ function renderGraficoEvolucion() {
             usePointStyle: true, 
             boxWidth: 8,
             padding: 15,
-            // <-- 4. ESTÉTICA DE LA LEYENDA MEJORADA (Sin tachado, solo gris clarito)
+            // 3. ELIMINAMOS EL TACHADO: Engañamos a Chart.js y pintamos de gris manualmente
             generateLabels: function(chart) {
-              const datasets = chart.data.datasets;
-              return datasets.map((dataset, i) => {
+              return chart.data.datasets.map((dataset, i) => {
                 const isHidden = !chart.isDatasetVisible(i);
                 return {
                   text: dataset.label,
-                  fillStyle: isHidden ? '#e0e0e0' : dataset.borderColor, // Cuadradito gris
-                  hidden: isHidden,
+                  fillStyle: isHidden ? 'transparent' : dataset.borderColor,
+                  strokeStyle: isHidden ? '#ccc' : dataset.borderColor,
+                  lineWidth: 2,
+                  hidden: false, // Magia: Le decimos que NO está oculto para que no lo tache
                   datasetIndex: i,
-                  fontColor: isHidden ? '#b0b0b0' : '#333', // Texto gris clarito si está apagado
-                  textDecoration: 'none' // Le sacamos el tachado feo
+                  fontColor: isHidden ? '#b0b0b0' : '#333' // Letra gris clarita
                 };
               });
             }
           },
+          // Como engañamos al motor arriba, tenemos que reimplementar el clic:
           onClick: function(e, legendItem, legend) {
             const index = legendItem.datasetIndex;
             const ci = legend.chart;
@@ -1495,7 +1490,6 @@ function renderGraficoEvolucion() {
         tooltip: {
           mode: 'index',
           intersect: false,
-          // <-- 5. ORDENAMIENTO INTELIGENTE DEL TOOLTIP (El 1° arriba de todo siempre)
           itemSort: function(a, b) {
             return a.parsed.y - b.parsed.y;
           },
@@ -1503,19 +1497,32 @@ function renderGraficoEvolucion() {
             title: function(context) {
               return 'Resultados tras el ' + context[0].label;
             },
-            // <-- 6. TEXTO MÁS LIMPIO Y MEDALLAS PARA EL PODIO
             label: function(context) {
               let user = context.dataset.label;
               let pos = context.parsed.y;
               let index = context.dataIndex;
               let pts = context.dataset.puntosAnexados[index];
-              
-              let medalla = '';
-              if (pos === 1) medalla = '🥇 ';
-              if (pos === 2) medalla = '🥈 ';
-              if (pos === 3) medalla = '🥉 ';
-              
+              let medalla = pos === 1 ? '🥇 ' : pos === 2 ? '🥈 ' : pos === 3 ? '🥉 ' : '';
               return `${medalla}#${pos} - ${user}: ${pts} pts`;
+            },
+            // 4. MÁQUINA DEL TIEMPO: El super-agregado para saber qué pasaba en ese momento
+            afterBody: function(context) {
+              let matchIndex = context[0].dataIndex;
+              // Calculamos cómo estaba TODO el ranking en ese partido específico
+              let snapshot = usuarios.map(u => ({
+                u: u,
+                pos: historial[u].posiciones[matchIndex],
+                pts: historial[u].puntosEje[matchIndex]
+              }));
+              snapshot.sort((a, b) => a.pos - b.pos);
+              
+              // Lo inyectamos al final del cuadrito negro del tooltip
+              let lines = ['', '--- LÍDERES EN ESTE MOMENTO ---'];
+              snapshot.slice(0, 3).forEach(s => {
+                let m = s.pos === 1 ? '🥇' : s.pos === 2 ? '🥈' : '🥉';
+                lines.push(`${m} ${s.u} (${s.pts} pts)`);
+              });
+              return lines;
             }
           }
         }
