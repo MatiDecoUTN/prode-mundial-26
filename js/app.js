@@ -687,8 +687,15 @@ function renderResultadosOficiales() {
 // TAB: Ranking General (La tabla de posiciones de tus amigos)
 function renderRankingGeneral() {
   const container = document.getElementById('ranking-container');
+  
+  // Prevención de errores si falta el div en el HTML
+  if (!container) return;
+
   container.innerHTML = '';
-  if (appData.ranking.length === 0) { container.innerHTML = '<p>El torneo no empezó.</p>'; return; }
+  if (appData.ranking.length === 0) { 
+    container.innerHTML = '<p style="text-align:center; padding: 20px;">El torneo no empezó o no hay puntos calculados.</p>'; 
+    return; 
+  }
 
   let html = `
     <div class="ranking-hint">💡 Tocá a un jugador para ver su perfil. En caso de empate, define quien tenga más Plenos (7pts).</div>
@@ -707,7 +714,7 @@ function renderRankingGeneral() {
   appData.ranking.forEach((row, index) => {
     let medalla = index + 1;
     if (index === 0) medalla = "🥇"; if (index === 1) medalla = "🥈"; if (index === 2) medalla = "🥉";
-    let esSocio = row.jugador.toLowerCase() === currentUser.username.toLowerCase() ? 'highlight-user' : '';
+    let esSocio = currentUser && row.jugador.toLowerCase() === currentUser.username.toLowerCase() ? 'highlight-user' : '';
 
     html += `
           <tr class="${esSocio} clickable-row" onclick="abrirPerfilJugador('${row.jugador}')">
@@ -719,9 +726,18 @@ function renderRankingGeneral() {
   });
   html += `</tbody></table></div>`;
   container.innerHTML = html;
-  // Llama a la generación del gráfico
-  renderGraficoEvolucion();
-} // <-- Esta es la llave de cierre que ya tenés en renderRankingGeneral
+
+  // Envolvemos el gráfico en un bloque seguro para que NUNCA rompa la tabla principal
+  try {
+    if (typeof Chart !== 'undefined') {
+      renderGraficoEvolucion();
+    } else {
+      console.warn("Chart.js no está cargado. Revisá la etiqueta <script> en el HTML.");
+    }
+  } catch (e) {
+    console.error("Error al dibujar el gráfico: ", e);
+  }
+}
 
 // Función auxiliar en JS para pintar los puntos individuales por tarjeta
 function calcularPuntosEnFrente(pL, pV, rL, rV) {
