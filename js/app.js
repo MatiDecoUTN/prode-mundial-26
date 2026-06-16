@@ -1627,18 +1627,33 @@ function renderSimuladorInit() {
   const container = document.getElementById('simulador-controls');
   if(!container) return;
 
-  // Filtramos los partidos pendientes pero con fase cerrada
-  const partidosPendientes = appData.partidos.filter(p => 
+  // Filtramos la totalidad de los partidos cerrados que aún no tienen resultado oficial
+  const partidosPendientesAll = appData.partidos.filter(p => 
     p.golesL === null && 
     p.golesV === null && 
     appData.fases[getFaseKeyDePartidoFrontend(p.id)] === false
   );
 
-  if(partidosPendientes.length === 0) {
+  if(partidosPendientesAll.length === 0) {
     container.innerHTML = '<p style="text-align: center; color: #666; font-weight: 500;">⏳ No hay partidos bloqueados pendientes de jugarse en este momento. Esperá a que el Admin cierre la próxima fase para poder simular.</p>';
     document.getElementById('simulador-table-container').innerHTML = '';
     return;
   }
+
+  // 🌟 ALGORITMO MÁQUINA DEL TIEMPO: Identificamos cronológicamente la fase activa actual
+  const ordenFases = ['grupos', 'f16', 'f8', 'f4', 'semi', 'final'];
+  let faseActiva = null;
+  
+  for (let f of ordenFases) {
+    const tienePartidosPendientes = partidosPendientesAll.some(p => getFaseKeyDePartidoFrontend(p.id) === f);
+    if (tienePartidosPendientes) {
+      faseActiva = f; // Encontramos la primera fase del fixture con acción pendiente
+      break;
+    }
+  }
+
+  // Filtramos la lista para quedarnos ÚNICAMENTE con la fase que se está disputando ahora
+  const partidosPendientes = partidosPendientesAll.filter(p => getFaseKeyDePartidoFrontend(p.id) === faseActiva);
 
   // 1. AGRUPAMOS LOS PARTIDOS POR FASE/GRUPO PARA ORDENARLOS VISUALMENTE
   let gruposMatch = {};
@@ -1687,7 +1702,7 @@ function renderSimuladorInit() {
       </div>
       
       <div id="sim-inputs-container" style="opacity: 0.4; pointer-events: none; transition: opacity 0.3s; margin-top: 10px;">
-        <label style="font-weight: 800; margin-bottom: 12px; display: block; color: #2c3e50; font-size: 1.1rem;">2. Ingresá el resultado a simular:</label>
+        <label style="font-weight: 800; margin-bottom: 12px; display: block; color: #2c3e50; font-size: 1.1rem;">2. Ingresá el resultado imaginario:</label>
         <div style="display: flex; align-items: center; gap: 15px; justify-content: center; background: #fff; padding: 20px; border-radius: 12px; border: 2px dashed #ccc;">
           <div style="text-align: right; width: 100px; font-weight: bold; font-size: 0.95rem; color: #555;" id="sim-name-local">Local</div>
           <input type="number" id="sim-gL" class="inp-score" min="0" placeholder="-">
