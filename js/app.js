@@ -1766,16 +1766,8 @@ function ejecutarSimulacion() {
   const rL = parseInt(simGL);
   const rV = parseInt(simGV);
 
-  // 1. Clonamos el ranking
-  let rankingSimulado = appData.ranking.map(r => ({
-    jugador: r.jugador,
-    puntos: r.puntos,
-    exactos: r.exactos,
-    ptsGanadosAhora: 0
-  }));
-
-  // 2. Calculamos los puntos
-  rankingSimulado.forEach(r => {
+  // 1. Clonamos el ranking y mapeamos los pronósticos individuales en el mismo paso
+  let rankingSimulado = appData.ranking.map(r => {
     let uLower = r.jugador.toLowerCase();
     let op = null;
     
@@ -1785,18 +1777,29 @@ function ejecutarSimulacion() {
       op = appData.pronosticosOtros[matchId].find(o => o.jugador.toLowerCase() === uLower);
     }
 
+    // Buscamos qué voto tiene cargado
+    let txtPronostico = "";
+    let pts = 0;
     if (op && op.gL !== "" && op.gV !== "") {
-      let pts = calcularPuntosEnFrente(op.gL, op.gV, rL, rV);
-      r.puntos += pts;
-      r.ptsGanadosAhora = pts;
-      if (pts === 7) r.exactos += 1;
+      txtPronostico = `${op.gL} - ${op.gV}`;
+      pts = calcularPuntosEnFrente(op.gL, op.gV, rL, rV);
+    } else {
+      txtPronostico = `<span style="color:#aaa; font-size:0.8rem; font-weight: normal; font-style: italic;">Sin cargar</span>`;
     }
+
+    return {
+      jugador: r.jugador,
+      puntos: r.puntos + pts,
+      exactos: r.exactos + (pts === 7 ? 1 : 0),
+      ptsGanadosAhora: pts,
+      pronosticoTexto: txtPronostico
+    };
   });
 
-  // 3. Re-ordenamos
+  // 2. Re-ordenamos por puntos simulados totales
   rankingSimulado.sort((a, b) => b.puntos - a.puntos || b.exactos - a.exactos);
 
-  // 4. Dibujamos la tabla cruzando los datos para ver cómo varió respecto a la REALIDAD actual
+  // 3. Dibujamos la tabla agregando la columna del Prode de cada uno
   let html = `
     <h3 style="margin: 30px 0 15px 0; text-align: center; color: #8e44ad; border-top: 2px dashed #e9ecef; padding-top: 25px;">
       📊 Así quedaría la tabla general
@@ -1807,6 +1810,7 @@ function ejecutarSimulacion() {
           <tr>
             <th style="width: 50px;">Pos</th>
             <th style="text-align: left;">Jugador</th>
+            <th>Prode</th>
             <th>Suma</th>
             <th>Total Simulado</th>
           </tr>
@@ -1824,8 +1828,6 @@ function ejecutarSimulacion() {
       ? `<span style="background: #e6f4ea; color: #137333; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #cce8d6;">+${row.ptsGanadosAhora}</span>` 
       : `<span style="color: #bbb; font-weight: 600;">0</span>`;
 
-    // ACÁ ESTÁ LA MAGIA DEL CAMBIO DE POSICIÓN:
-    // Buscamos en qué puesto real está parado este jugador antes de la simulación
     let posRealIndex = appData.ranking.findIndex(r => r.jugador === row.jugador);
     let posRealActual = posRealIndex > -1 ? posRealIndex + 1 : posSimulada;
     let diff = posRealActual - posSimulada; 
@@ -1843,6 +1845,7 @@ function ejecutarSimulacion() {
           <tr class="${esSocio}">
             <td style="font-weight: 700;">${medalla}</td>
             <td class="team-name">${row.jugador} ${badgeVariacion}</td>
+            <td style="font-weight: 700; color: #495057;">${row.pronosticoTexto}</td>
             <td>${badgePuntos}</td>
             <td class="col-pts" style="color: #8e44ad; font-size: 1rem;">${row.puntos} pts</td>
           </tr>`;
