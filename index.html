@@ -44,9 +44,10 @@
         <button class="nav-tab active" data-tab="tab-prode" onclick="showTab('tab-prode',this)">📝 Mis Pronósticos</button>
         <button class="nav-tab" data-tab="tab-resultados" onclick="showTab('tab-resultados',this)">🎯 Resultados</button>
         <button class="nav-tab" data-tab="tab-ranking" onclick="showTab('tab-ranking',this)">📊 Ranking</button>
-        <button class="nav-tab" data-tab="tab-info" onclick="showTab('tab-info',this)">ℹ️ Info</button>
+        <button class="nav-tab" data-tab="tab-simulador" onclick="showTab('tab-simulador',this)">🔮 Simulador</button>
         <button class="nav-tab" data-tab="tab-extras" onclick="showTab('tab-extras', this)">🎲 Premios Random</button>
         <button class="nav-tab" data-tab="tab-salon" onclick="showTab('tab-salon', this)">🏆 Salón de la Fama</button>
+        <button class="nav-tab" data-tab="tab-info" onclick="showTab('tab-info',this)">ℹ️ Info</button>
       </div>
       
       <div class="nav-user">
@@ -74,6 +75,19 @@
         <button class="btn-primary btn-save" onclick="savePronosticos()">💾 Guardar mis pronósticos</button>
         <span id="save-status" class="save-status"></span>
       </div>
+    </div>
+
+    <div id="tab-simulador" class="tab-content">
+      <div class="tab-header"><h2>🔮 Simulador de Posiciones</h2></div>
+      
+      <div class="info-card" style="border-left: 4px solid #8e44ad;">
+        <p style="font-size: 0.95rem; margin-top: 0;"><strong>¿Cómo funciona?</strong> Elegí un partido que esté por arrancar (cuya fase ya haya sido cerrada por el Admin), inventá un resultado y fijate cómo quedaría la tabla general si el partido terminara exactamente así.</p>
+      </div>
+
+      <div id="simulador-controls" style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        </div>
+      
+      <div id="simulador-table-container"></div>
     </div>
 
     <div id="tab-extras" class="tab-content"></div>

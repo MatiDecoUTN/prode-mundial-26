@@ -164,6 +164,7 @@ async function fetchAppDatos() {
       document.getElementById('nav-username').innerText = currentUser.username;
       renderMisPronosticos(); renderResultadosOficiales(); renderRankingGeneral();
       renderPremiosRandom(); // <-- Sumar esta línea
+      renderSimuladorInit();
       iniciarContadorRegresivo();
     }
   } catch (err) { alert("Error: " + err.message); } finally { loading.classList.add('hidden'); }
@@ -1622,3 +1623,131 @@ function toggleGrafico() {
   wrapper.classList.toggle('hidden');
 }
 
+function renderSimuladorInit() {
+  const container = document.getElementById('simulador-controls');
+  if(!container) return;
+
+  // Filtramos: Partidos SIN resultado oficial, pero cuya FASE YA ESTÉ CERRADA (para tener los datos del resto)
+  const partidosPendientes = appData.partidos.filter(p => 
+    p.golesL === null && 
+    p.golesV === null && 
+    appData.fases[getFaseKeyDePartidoFrontend(p.id)] === false
+  );
+
+  if(partidosPendientes.length === 0) {
+    container.innerHTML = '<p style="text-align: center; color: #666; font-weight: 500;">⏳ No hay partidos bloqueados pendientes de jugarse en este momento. Esperá a que el Admin cierre la próxima fase para poder simular.</p>';
+    document.getElementById('simulador-table-container').innerHTML = '';
+    return;
+  }
+
+  let optionsHtml = partidosPendientes.map(p => 
+    `<option value="${p.id}">Partido ${p.id}: ${p.local} vs ${p.visitante}</option>`
+  ).join('');
+
+  container.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      <div>
+        <label style="font-weight: bold; margin-bottom: 8px; display: block; color: #2c3e50;">1. Seleccioná el partido en juego:</label>
+        <select id="sim-partido-select" style="width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 1rem; cursor: pointer;">
+          ${optionsHtml}
+        </select>
+      </div>
+      
+      <div>
+        <label style="font-weight: bold; margin-bottom: 8px; display: block; color: #2c3e50;">2. Ingresá el resultado imaginario:</label>
+        <div style="display: flex; align-items: center; gap: 10px; justify-content: center; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px dashed #ccc;">
+          <input type="number" id="sim-gL" class="inp-score" min="0" placeholder="-">
+          <span style="font-weight: 900; font-size: 1.2rem; color: #888;">VS</span>
+          <input type="number" id="sim-gV" class="inp-score" min="0" placeholder="-">
+        </div>
+      </div>
+      
+      <button onclick="ejecutarSimulacion()" style="background: #8e44ad; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: 800; cursor: pointer; font-size: 1.05rem; transition: background 0.2s; margin-top: 5px;">
+        ✨ Simular Tabla
+      </button>
+    </div>
+  `;
+}
+
+function ejecutarSimulacion() {
+  const matchId = parseInt(document.getElementById('sim-partido-select').value);
+  const simGL = document.getElementById('sim-gL').value;
+  const simGV = document.getElementById('sim-gV').value;
+
+  if(simGL === "" || simGV === "") {
+    alert("Por favor, ingresá los goles de ambos equipos para simular.");
+    return;
+  }
+
+  const rL = parseInt(simGL);
+  const rV = parseInt(simGV);
+
+  // 1. Clonamos el ranking actual para no romper los datos reales
+  let rankingSimulado = appData.ranking.map(r => ({
+    jugador: r.jugador,
+    puntos: r.puntos,
+    exactos: r.exactos,
+    ptsGanadosAhora: 0
+  }));
+
+  // 2. Calculamos los puntos extra para cada jugador en base al resultado imaginario
+  rankingSimulado.forEach(r => {
+    let uLower = r.jugador.toLowerCase();
+    let op = null;
+    
+    if (uLower === currentUser.username.toLowerCase()) {
+      op = appData.misPronosticos[matchId];
+    } else if (appData.pronosticosOtros[matchId]) {
+      op = appData.pronosticosOtros[matchId].find(o => o.jugador.toLowerCase() === uLower);
+    }
+
+    if (op && op.gL !== "" && op.gV !== "") {
+      let pts = calcularPuntosEnFrente(op.gL, op.gV, rL, rV);
+      r.puntos += pts;
+      r.ptsGanadosAhora = pts;
+      if (pts === 7) r.exactos += 1;
+    }
+  });
+
+  // 3. Re-ordenamos la tabla simulada
+  rankingSimulado.sort((a, b) => b.puntos - a.puntos || b.exactos - a.exactos);
+
+  // 4. Dibujamos la nueva tabla resaltando lo que sumó cada uno
+  let html = `
+    <h3 style="margin: 25px 0 15px 0; text-align: center; color: #8e44ad; border-top: 2px dashed #eee; padding-top: 20px;">
+      📊 Así quedaría la tabla general
+    </h3>
+    <div class="table-container">
+      <table class="standings-table">
+        <thead>
+          <tr>
+            <th style="width: 50px;">Pos</th>
+            <th style="text-align: left;">Jugador</th>
+            <th>Puntos Hoy</th>
+            <th>Total Simulado</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  rankingSimulado.forEach((row, index) => {
+    let medalla = index + 1;
+    if (index === 0) medalla = "🥇"; if (index === 1) medalla = "🥈"; if (index === 2) medalla = "🥉";
+    let esSocio = currentUser && row.jugador.toLowerCase() === currentUser.username.toLowerCase() ? 'highlight-user' : '';
+
+    let badgePuntos = row.ptsGanadosAhora > 0 
+      ? `<span style="background: #e6f4ea; color: #137333; padding: 4px 8px; border-radius: 4px; font-weight: 800;">+${row.ptsGanadosAhora}</span>` 
+      : `<span style="color: #bbb; font-weight: 600;">0</span>`;
+
+    html += `
+          <tr class="${esSocio}">
+            <td style="font-weight: 700;">${medalla}</td>
+            <td class="team-name">${row.jugador}</td>
+            <td>${badgePuntos}</td>
+            <td class="col-pts" style="color: #8e44ad;">${row.puntos} pts</td>
+          </tr>`;
+  });
+  html += `</tbody></table></div>`;
+
+  document.getElementById('simulador-table-container').innerHTML = html;
+}
