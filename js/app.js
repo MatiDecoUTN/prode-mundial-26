@@ -682,13 +682,69 @@ function renderResultadosOficiales() {
   document.getElementById('prode-pts-badge').innerText = `🏆 Mis Puntos: ${puntosTotalesJugador} pts`;
 }
 
+
+// Variable global para recordar si el usuario prendió las flechitas
+window.mostrarVariacionRanking = false; 
+
+function actualizarToggleVariacion(isChecked) {
+   window.mostrarVariacionRanking = isChecked;
+   renderRankingGeneral();
+}
+
+// Función que calcula qué puesto tenía cada uno antes del último partido jugado
+function getVariacionPosiciones() {
+   const partidosJugados = appData.partidos.filter(p => p.golesL !== null && p.golesV !== null).sort((a, b) => a.id - b.id);
+   let variaciones = {};
+   let usuarios = appData.jugadores.filter(j => j.rol !== 'admin').map(j => j.usuario);
+
+   // Si hay 1 o 0 partidos jugados, no hay variación posible todavía
+   if (partidosJugados.length <= 1) {
+      usuarios.forEach(u => variaciones[u] = 0);
+      return variaciones;
+   }
+
+   let ptsPrevios = {};
+   usuarios.forEach(u => ptsPrevios[u] = { pts: 0, exactos: 0 });
+
+   // Calculamos el torneo frenando UN PARTIDO ANTES del final (length - 1)
+   for(let i = 0; i < partidosJugados.length - 1; i++) {
+      let p = partidosJugados[i];
+      usuarios.forEach(u => {
+         let uLower = u.toLowerCase();
+         let op = null;
+         if (uLower === currentUser.username.toLowerCase()) {
+            op = appData.misPronosticos[p.id];
+         } else if (appData.pronosticosOtros[p.id]) {
+            op = appData.pronosticosOtros[p.id].find(o => o.jugador.toLowerCase() === uLower);
+         }
+         if (op && op.gL !== "" && op.gV !== "") {
+            let pts = calcularPuntosEnFrente(op.gL, op.gV, p.golesL, p.golesV);
+            ptsPrevios[u].pts += pts;
+            if (pts === 7) ptsPrevios[u].exactos += 1;
+         }
+      });
+   }
+
+   // Foto de las posiciones en el pasado
+   let snapshotPrevio = usuarios.map(u => ({ usuario: u, pts: ptsPrevios[u].pts, exactos: ptsPrevios[u].exactos }));
+   snapshotPrevio.sort((a, b) => b.pts - a.pts || b.exactos - a.exactos);
+   let posicionesPrevias = {};
+   snapshotPrevio.forEach((snap, idx) => posicionesPrevias[snap.usuario] = idx + 1);
+
+   // Comparamos el pasado con la tabla real del presente
+   appData.ranking.forEach((row, idx) => {
+       let posActual = idx + 1;
+       let posPrevia = posicionesPrevias[row.jugador] || posActual;
+       variaciones[row.jugador] = posPrevia - posActual; // Ej: Si antes era 5° y ahora 3° -> 5 - 3 = +2 (Subió)
+   });
+
+   return variaciones;
+}
     
 
 // TAB: Ranking General (La tabla de posiciones de tus amigos)
 function renderRankingGeneral() {
   const container = document.getElementById('ranking-container');
-  
-  // Prevención de errores si falta el div en el HTML
   if (!container) return;
 
   container.innerHTML = '';
@@ -697,7 +753,20 @@ function renderRankingGeneral() {
     return; 
   }
 
+  // Obtenemos las variaciones numéricas SOLO si el switch está prendido
+  let variaciones = {};
+  if (window.mostrarVariacionRanking) {
+    variaciones = getVariacionPosiciones();
+  }
+
+  // Armamos el Toggle HTML bien bonito arriba de la tabla
   let html = `
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 12px; margin-top: -10px;">
+      <label style="font-size: 0.8rem; color: #555; display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; background: white; padding: 8px 15px; border-radius: 20px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s;">
+        <input type="checkbox" style="cursor: pointer;" onchange="actualizarToggleVariacion(this.checked)" ${window.mostrarVariacionRanking ? 'checked' : ''}>
+        📈 Mostrar variación vs. último partido
+      </label>
+    </div>
     <div class="ranking-hint">💡 Tocá a un jugador para ver su perfil. En caso de empate, define quien tenga más Plenos (7pts).</div>
     <div class="table-container">
       <table class="standings-table">
@@ -716,10 +785,23 @@ function renderRankingGeneral() {
     if (index === 0) medalla = "🥇"; if (index === 1) medalla = "🥈"; if (index === 2) medalla = "🥉";
     let esSocio = currentUser && row.jugador.toLowerCase() === currentUser.username.toLowerCase() ? 'highlight-user' : '';
 
+    // Lógica para pintar la flecha verde, roja o la raya gris
+    let badgeVariacion = '';
+    if (window.mostrarVariacionRanking) {
+       let diff = variaciones[row.jugador] || 0;
+       if (diff > 0) {
+           badgeVariacion = `<span style="color: #137333; font-size: 0.8rem; font-weight: 800; margin-left: 8px;" title="Subió ${diff} posiciones">▲ ${diff}</span>`;
+       } else if (diff < 0) {
+           badgeVariacion = `<span style="color: #d93025; font-size: 0.8rem; font-weight: 800; margin-left: 8px;" title="Bajó ${Math.abs(diff)} posiciones">▼ ${Math.abs(diff)}</span>`;
+       } else {
+           badgeVariacion = `<span style="color: #999; font-size: 0.8rem; font-weight: 800; margin-left: 8px;" title="Mantuvo su posición">➖</span>`;
+       }
+    }
+
     html += `
           <tr class="${esSocio} clickable-row" onclick="abrirPerfilJugador('${row.jugador}')">
             <td style="font-weight: 700;">${medalla}</td>
-            <td class="team-name">${row.jugador}</td>
+            <td class="team-name">${row.jugador} ${badgeVariacion}</td>
             <td style="color: #666; font-size: 0.9rem;">🎯 ${row.exactos || 0}</td>
             <td class="col-pts">${row.puntos} pts</td>
           </tr>`;
@@ -727,7 +809,6 @@ function renderRankingGeneral() {
   html += `</tbody></table></div>`;
   container.innerHTML = html;
 
-  // Envolvemos el gráfico en un bloque seguro para que NUNCA rompa la tabla principal
   try {
     if (typeof Chart !== 'undefined') {
       renderGraficoEvolucion();
