@@ -1785,7 +1785,7 @@ function ejecutarSimulacion() {
   document.getElementById('simulador-table-container').innerHTML = generarHTMLTablaSimulada(rankingSim, `Tabla si termina ${simGL} - ${simGV}`);
 }
 
-// 4. EL ORÁCULO MATEMÁTICO 4.0 (VECTOR DISTANCIA Y DIFERENCIAL NETO)
+// 4. EL ORÁCULO MATEMÁTICO 5.0 (ALTA PRECISIÓN Y MEMORIA HISTÓRICA)
 function ejecutarOraculo() {
   const matchId = parseInt(document.getElementById('sim-partido-select').value);
   const curL = parseInt(document.getElementById('ora-gL').value) || 0;
@@ -1801,42 +1801,36 @@ function ejecutarOraculo() {
     for (let testV = 0; testV <= topeV; testV++) {
       
       let rankingPrueba = simularRankingFicticio(matchId, testL, testV);
-      
       let miIndex = rankingPrueba.findIndex(r => r.jugador.toLowerCase() === currentUser.username.toLowerCase());
       let miFila = rankingPrueba[miIndex];
       let miPosicion = miIndex + 1;
       
       let score = 0;
 
-      // 🥇 VARIABLE 1: Mi Éxito Personal (Ahora tiene un peso BRUTAL para evitar el masoquismo)
+      // 🥇 VARIABLE 1: Mi Éxito Personal 
       score += (miFila.ptsGanadosAhora * 2000); 
 
       // 🥈 VARIABLE 2: Posición Neta
       score += ((miPosRealActual - miPosicion) * 3000); 
 
-      // 🧠 VARIABLE 3: EL VECTOR DISTANCIA (Tu idea implementada)
-      // Calculamos el diferencial de puntos contra cada rival y lo multiplicamos por su importancia
+      // 🧠 VARIABLE 3: EL VECTOR DISTANCIA (Ajustado para que duelan todos)
       let scoreDiferencial = 0;
       
       rankingPrueba.forEach((r) => {
          if (r.jugador.toLowerCase() === currentUser.username.toLowerCase()) return; 
          
-         // Buscamos dónde estaba este rival ANTES de simular el partido
          let posRivalInicial = appData.ranking.findIndex(x => x.jugador === r.jugador) + 1;
-         
-         // Diferencial neto: Si yo sumo 3 y él 0, da +3. Si yo 0 y él 3, da -3. Si ambos 3, da 0.
          let diffPuntos = miFila.ptsGanadosAhora - r.ptsGanadosAhora; 
-         
-         // Distancia absoluta en la tabla entre el rival y yo
          let distanciaTabla = Math.abs(miPosRealActual - posRivalInicial);
          
-         let pesoVector = 10; // Peso base para los randoms de la tabla
+         // Subimos la base a 40 para que el último de la tabla también mueva la aguja de los decimales
+         let pesoVector = 40; 
          
-         if (distanciaTabla === 1) pesoVector = 150; // El que está pegado arriba o abajo mío vale oro
-         else if (distanciaTabla <= 3) pesoVector = 80; // Rivales muy cercanos
-         else if (distanciaTabla <= 6) pesoVector = 30; // Rivales a media distancia
+         if (distanciaTabla === 1) pesoVector = 200; 
+         else if (distanciaTabla <= 3) pesoVector = 120; 
+         else if (distanciaTabla <= 6) pesoVector = 70; 
          
-         if (posRivalInicial <= 3) pesoVector += 60; // Extra si el rival está en el podio (quiero que caiga)
+         if (posRivalInicial <= 3) pesoVector += 80; 
          
          scoreDiferencial += (diffPuntos * pesoVector);
       });
@@ -1858,37 +1852,50 @@ function ejecutarOraculo() {
     }
   }
 
-  // 1. Buscamos el MEJOR y PEOR puntaje de la historia desde el 0-0
+  // 1. Buscamos el MEJOR y PEOR puntaje absoluto desde el 0-0
   let maxScoreGlobal = Math.max(...todosLosEscenarios.map(e => e.score));
   let minScoreGlobal = Math.min(...todosLosEscenarios.map(e => e.score));
   let rangoGlobal = maxScoreGlobal - minScoreGlobal || 1;
 
-  // 2. Filtramos SOLO los que todavía pueden pasar
+  // 2. Extraemos el escenario perfecto histórico para mostrarlo como referencia
+  let idealAbsoluto = todosLosEscenarios.reduce((prev, curr) => (prev.score > curr.score) ? prev : curr);
+
+  // 3. Filtramos los que todavía pueden pasar
   let escenariosPosibles = todosLosEscenarios.filter(e => e.esPosible);
 
-  // 3. Los ordenamos del mejor al peor
+  // 4. Los ordenamos
   escenariosPosibles.sort((a, b) => b.score - a.score);
   
-  // 4. Calculamos la eficiencia contra el RANGO GLOBAL ABSOLUTO
+  // 5. Calculamos la eficiencia contra el RANGO GLOBAL (Ahora con 2 decimales para romper empates visuales)
   escenariosPosibles.forEach(esc => {
      let efi = ((esc.score - minScoreGlobal) / rangoGlobal) * 100;
-     esc.eficiencia = parseFloat(efi.toFixed(1)); 
+     esc.eficiencia = parseFloat(efi.toFixed(2)); 
   });
 
   ultimosEscenariosOraculo = escenariosPosibles.slice(0, 3);
-  mostrarTop3Oraculo(miPosRealActual);
+  mostrarTop3Oraculo(miPosRealActual, idealAbsoluto);
 }
 
-// 5. Renderiza el Menú Interactivo del Top 3 actualizado
-function mostrarTop3Oraculo(posRealActual) {
+// 5. Renderiza el Menú Interactivo del Top 3
+function mostrarTop3Oraculo(posRealActual, idealAbsoluto) {
+  // Lógica para el banner del 100% histórico
+  let bannerIdealHTML = '';
+  if (!idealAbsoluto.esPosible) {
+    bannerIdealHTML = `
+      <div style="background: #fff3cd; color: #856404; padding: 10px 15px; border-radius: 8px; font-size: 0.85rem; text-align: center; margin-bottom: 15px; border: 1px solid #ffeeba; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+        💡 <strong>Referencia:</strong> El resultado ideal absoluto era <strong>${idealAbsoluto.rL} - ${idealAbsoluto.rV}</strong> (100%), pero ya no es posible.
+      </div>
+    `;
+  }
+
   let html = `
     <div style="background: white; border: 1px solid #dcdde1; border-radius: 12px; margin: 20px 0; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-      <h3 style="color: #8e44ad; margin-top: 0; margin-bottom: 5px; text-align: center; font-size: 1.15rem;">
+      <h3 style="color: #8e44ad; margin-top: 0; margin-bottom: 15px; text-align: center; font-size: 1.15rem;">
         🧙‍♂️ Tus Mejores Opciones Posibles
       </h3>
-      <p style="font-size: 0.75rem; color: #777; text-align: center; margin-bottom: 15px; line-height: 1.3;">
-        (La % de eficiencia es absoluta. Si el 100% ideal ya no es posible, verás % más bajos).
-      </p>
+      
+      ${bannerIdealHTML}
+
       <div style="display: flex; flex-direction: column; gap: 10px;">
   `;
 
@@ -1896,8 +1903,6 @@ function mostrarTop3Oraculo(posRealActual) {
      let medalla = idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉';
      let diff = posRealActual - esc.posicionMia;
      let textoSube = diff > 0 ? `<span style="color:#137333; font-weight:bold;">Subirías ${diff} pos.</span>` : diff < 0 ? `<span style="color:#d93025; font-weight:bold;">Bajarías ${Math.abs(diff)} pos.</span>` : `<span style="color:#666; font-weight:bold;">Mantenés puesto</span>`;
-     
-     // El color ahora depende del número para que no sea todo verde si caemos al 60%
      let colorEfi = esc.eficiencia >= 90 ? '#137333' : esc.eficiencia >= 70 ? '#f39c12' : '#d35400';
 
      html += `
