@@ -1785,22 +1785,25 @@ function ejecutarSimulacion() {
   document.getElementById('simulador-table-container').innerHTML = generarHTMLTablaSimulada(rankingSim, `Tabla si termina ${simGL} - ${simGV}`);
 }
 
-// 4. EL ORÁCULO MATEMÁTICO 2.0 (FACTOR SANGRE)
-// 4. EL ORÁCULO MATEMÁTICO 2.0 (CALIBRADO Y REALISTA)
+// 4. EL ORÁCULO MATEMÁTICO 3.0 (BÚSQUEDA ABSOLUTA Y REALISTA)
 function ejecutarOraculo() {
   const matchId = parseInt(document.getElementById('sim-partido-select').value);
   const curL = parseInt(document.getElementById('ora-gL').value) || 0;
   const curV = parseInt(document.getElementById('ora-gV').value) || 0;
 
   let escenarios = [];
-  const maxGolesExtra = 3; // Bajamos a 3 para no evaluar cosas tipo 7-7 innecesariamente
+  
+  // EL FIX: Límite absoluto de goles a escanear (hasta 5 goles por equipo)
+  // Si un partido va 4-4, escanea hasta 2 goles más por las dudas.
+  const topeL = Math.max(5, curL + 2);
+  const topeV = Math.max(5, curV + 2);
+  
   let miPosRealActual = appData.ranking.findIndex(r => r.jugador.toLowerCase() === currentUser.username.toLowerCase()) + 1;
   let totalJugadores = appData.ranking.length;
 
-  for (let addL = 0; addL <= maxGolesExtra; addL++) {
-    for (let addV = 0; addV <= maxGolesExtra; addV++) {
-      let testL = curL + addL;
-      let testV = curV + addV;
+  // En vez de sumar "goles extra", iteramos desde el marcador actual hasta el tope absoluto
+  for (let testL = curL; testL <= topeL; testL++) {
+    for (let testV = curV; testV <= topeV; testV++) {
       
       let rankingPrueba = simularRankingFicticio(matchId, testL, testV);
       
@@ -1811,11 +1814,9 @@ function ejecutarOraculo() {
       let score = 0;
 
       // 🥇 VARIABLE 1: Posición (Prioridad Absoluta)
-      // Escalar puestos es lo que más puntos da. Si caigo, me destruye el score.
       score += ((miPosRealActual - miPosicion) * 10000); 
 
       // 🥈 VARIABLE 2: Mis Puntos (Prioridad Alta)
-      // Yo quiero sumar sí o sí. Mi éxito personal vale oro.
       score += (miFila.ptsGanadosAhora * 200);
 
       // 🥉 VARIABLE 3: Brecha con el líder
@@ -1824,25 +1825,23 @@ function ejecutarOraculo() {
       else score -= ((lider.puntos - miFila.puntos) * 50); 
 
       // 🩸 VARIABLE 4: Factor Sangre (Daño colateral)
-      // Restamos puntos al score si el resto suma, pero en su justa medida.
       let rivalesDanio = 0;
       rankingPrueba.forEach((r, idx) => {
          let posRival = idx + 1;
          if (r.jugador.toLowerCase() === currentUser.username.toLowerCase()) return; 
          
          let esTop3 = posRival <= 3;
-         let esCercano = Math.abs(posRival - miPosicion) <= 3; // Me pisan los talones o los sigo de cerca
+         let esCercano = Math.abs(posRival - miPosicion) <= 3; 
          
-         let pesoDano = 10; // Si un random de abajo suma, no me calienta (pesa poco)
-         if (esTop3) pesoDano = 30; // Castigo medio si suman los de arriba
-         if (esCercano) pesoDano = 60; // Castigo fuerte si suma mi competencia directa
+         let pesoDano = 10; 
+         if (esTop3) pesoDano = 30; 
+         if (esCercano) pesoDano = 60; 
          
          rivalesDanio += (r.ptsGanadosAhora * pesoDano);
       });
       score -= rivalesDanio; 
 
-      // ⚽ VARIABLE 5: Factor Realismo (El desempate final)
-      // A igualdad de todo lo anterior, siempre preferimos el resultado con menos goles totales.
+      // ⚽ VARIABLE 5: Factor Realismo 
       let totalGolesEscenario = testL + testV;
       score -= (totalGolesEscenario * 5);
 
