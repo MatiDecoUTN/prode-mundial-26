@@ -1785,7 +1785,7 @@ function ejecutarSimulacion() {
   document.getElementById('simulador-table-container').innerHTML = generarHTMLTablaSimulada(rankingSim, `Tabla si termina ${simGL} - ${simGV}`);
 }
 
-// 4. EL ORÁCULO MATEMÁTICO 7.0 (EXPLICACIONES CON NOMBRE Y APELLIDO)
+// 4. EL ORÁCULO MATEMÁTICO 8.0 (EXPLICACIÓN POR DESCARTE Y DIFERENCIAL)
 function ejecutarOraculo() {
   const matchId = parseInt(document.getElementById('sim-partido-select').value);
   const curL = parseInt(document.getElementById('ora-gL').value) || 0;
@@ -1810,7 +1810,6 @@ function ejecutarOraculo() {
       score += ((miPosRealActual - miPosicion) * 3000); 
 
       let scoreDiferencial = 0;
-      let impactosNegativos = []; // Acá guardamos quién suma y cuánto nos duele
       
       rankingPrueba.forEach((r) => {
          if (r.jugador.toLowerCase() === currentUser.username.toLowerCase()) return; 
@@ -1826,15 +1825,6 @@ function ejecutarOraculo() {
          if (posRivalInicial <= 3) pesoVector += 80; 
          
          scoreDiferencial += (diffPuntos * pesoVector);
-
-         // Si el rival sumó puntos, lo anotamos en la lista negra
-         if (r.ptsGanadosAhora > 0) {
-             impactosNegativos.push({
-                 nombre: r.jugador,
-                 pts: r.ptsGanadosAhora,
-                 dolor: r.ptsGanadosAhora * pesoVector // Calculamos qué tan grave es para vos
-             });
-         }
       });
       
       score += scoreDiferencial; 
@@ -1842,16 +1832,12 @@ function ejecutarOraculo() {
       let totalGolesEscenario = testL + testV;
       score -= (totalGolesEscenario * 20);
 
-      // Ordenamos a los rivales que sumaron de mayor a menor "dolor" para vos
-      impactosNegativos.sort((a, b) => b.dolor - a.dolor);
-
       todosLosEscenarios.push({
         rL: testL, rV: testV,
         posicionMia: miPosicion,
         ptsGanadosAca: miFila.ptsGanadosAhora,
         score: score,
-        villanos: impactosNegativos.slice(0, 2), // Nos quedamos solo con los 2 peores para no saturar
-        totalRivalesSumaron: impactosNegativos.length,
+        scoreVector: scoreDiferencial, // Lo guardamos para la comparación visual
         totalGoles: totalGolesEscenario,
         rankingGenerado: rankingPrueba,
         esPosible: (testL >= curL && testV >= curV) 
@@ -1901,39 +1887,59 @@ function mostrarTop3Oraculo(posRealActual, idealAbsoluto) {
       <div style="display: flex; flex-direction: column; gap: 10px;">
   `;
 
+  let liderOpciones = ultimosEscenariosOraculo[0];
+
   ultimosEscenariosOraculo.forEach((esc, idx) => {
      let medalla = idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉';
      let diff = posRealActual - esc.posicionMia;
      let textoSube = diff > 0 ? `<span style="color:#137333; font-weight:bold;">Subirías ${diff} pos.</span>` : diff < 0 ? `<span style="color:#d93025; font-weight:bold;">Bajarías ${Math.abs(diff)} pos.</span>` : `<span style="color:#666; font-weight:bold;">Mantenés puesto</span>`;
      let colorEfi = esc.eficiencia >= 90 ? '#137333' : esc.eficiencia >= 70 ? '#f39c12' : '#d35400';
 
-     // 🏷️ GENERADOR DE ETIQUETAS CON NOMBRE Y APELLIDO
-     let insights = [];
+     // 🏷️ EXPLICACIÓN POR DESCARTE (Solo una etiqueta limpia por opción)
+     let htmlInsights = '';
      
-     // 1. Lo bueno tuyo
-     if (esc.ptsGanadosAca === 7) insights.push("🎯 Clavás un pleno (+7)");
-     
-     // 2. Lo malo de los demás (mostramos a los 2 peores)
-     if (esc.villanos.length === 0 && esc.ptsGanadosAca > 0) {
-         insights.push("🛡️ Tus rivales no suman");
+     if (idx === 0) {
+         htmlInsights = `<span style="display:inline-block; background: #e6f4ea; padding: 3px 6px; border-radius: 4px; font-size: 0.65rem; color: #137333; margin-top: 6px; font-weight: 600; border: 1px solid #13733340;">✨ Tu mejor escenario posible</span>`;
      } else {
-         esc.villanos.forEach(v => {
-             insights.push(`⚠️ ${v.nombre} suma +${v.pts}`);
-         });
+         let razon = "";
          
-         // Si hay más gente que suma, agregamos un "y X más..." genérico
-         let ocultos = esc.totalRivalesSumaron - esc.villanos.length;
-         if (ocultos > 0) insights.push(`y ${ocultos} más...`);
+         if (esc.posicionMia > liderOpciones.posicionMia) {
+             razon = "📉 Quedás más abajo en la tabla";
+         } else if (esc.ptsGanadosAca < liderOpciones.ptsGanadosAca) {
+             razon = "📉 Sumás menos puntos propios";
+         } else if (esc.scoreVector < liderOpciones.scoreVector) {
+             // Buscamos al peor villano de este escenario comparado con el líder
+             let peorDiferencia = 0;
+             let rivalCulpable = "";
+             
+             esc.rankingGenerado.forEach(rEsc => {
+                 if (rEsc.jugador.toLowerCase() === currentUser.username.toLowerCase()) return;
+                 let rLider = liderOpciones.rankingGenerado.find(x => x.jugador === rEsc.jugador);
+                 
+                 // Si el rival suma más puntos acá que en la opción 1
+                 if (rLider && rEsc.ptsGanadosAhora > rLider.ptsGanadosAhora) {
+                     let posRivalInicial = appData.ranking.findIndex(x => x.jugador === rEsc.jugador) + 1;
+                     // Ponderamos por cercanía para agarrar al rival que más te molesta
+                     let distancia = Math.abs(posRealActual - posRivalInicial);
+                     let impacto = (rEsc.ptsGanadosAhora - rLider.ptsGanadosAhora) * (100 - distancia);
+                     
+                     if (impacto > peorDiferencia) {
+                         peorDiferencia = impacto;
+                         rivalCulpable = rEsc.jugador;
+                     }
+                 }
+             });
+             
+             if (rivalCulpable) razon = `⚠️ Pierde vs el 1° porque ${rivalCulpable} suma más acá`;
+             else razon = "⚠️ Beneficia matemáticamente a tus rivales";
+         } else if (esc.totalGoles > liderOpciones.totalGoles) {
+             razon = "⚽ Pierde vs el 1° por exceso de goles imaginarios";
+         } else {
+             razon = "📉 Matemáticamente menos eficiente";
+         }
+         
+         htmlInsights = `<span style="display:inline-block; background: #fdf3f4; padding: 3px 6px; border-radius: 4px; font-size: 0.65rem; color: #d93025; margin-top: 6px; font-weight: 600; border: 1px solid #d9302540;">${razon}</span>`;
      }
-
-     // 3. Castigo por resultado raro
-     if (esc.totalGoles > 5) insights.push(`⚽ Muchos goles`);
-
-     let htmlInsights = insights.map(i => {
-         let bg = i.includes('⚠️') ? '#fdf3f4' : i.includes('🎯') || i.includes('🛡️') ? '#e6f4ea' : '#e9ecef';
-         let col = i.includes('⚠️') ? '#d93025' : i.includes('🎯') || i.includes('🛡️') ? '#137333' : '#555';
-         return `<span style="display:inline-block; background: ${bg}; padding: 3px 6px; border-radius: 4px; font-size: 0.65rem; color: ${col}; margin-right: 4px; margin-top: 6px; font-weight: 600; border: 1px solid ${col}40;">${i}</span>`;
-     }).join('');
 
      html += `
        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8f9fa; border: 1px solid #eee; border-radius: 8px; cursor:pointer; transition: all 0.2s;" onclick="dibujarTablaSimuladaDesdeOraculo(${idx})" onmouseover="this.style.borderColor='#8e44ad'" onmouseout="this.style.borderColor='#eee'">
