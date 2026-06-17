@@ -1786,13 +1786,14 @@ function ejecutarSimulacion() {
 }
 
 // 4. EL ORÁCULO MATEMÁTICO 2.0 (FACTOR SANGRE)
+// 4. EL ORÁCULO MATEMÁTICO 2.0 (CALIBRADO Y REALISTA)
 function ejecutarOraculo() {
   const matchId = parseInt(document.getElementById('sim-partido-select').value);
   const curL = parseInt(document.getElementById('ora-gL').value) || 0;
   const curV = parseInt(document.getElementById('ora-gV').value) || 0;
 
   let escenarios = [];
-  const maxGolesExtra = 4; 
+  const maxGolesExtra = 3; // Bajamos a 3 para no evaluar cosas tipo 7-7 innecesariamente
   let miPosRealActual = appData.ranking.findIndex(r => r.jugador.toLowerCase() === currentUser.username.toLowerCase()) + 1;
   let totalJugadores = appData.ranking.length;
 
@@ -1809,34 +1810,41 @@ function ejecutarOraculo() {
       
       let score = 0;
 
-      // VARIABLE 1: Posición (Es lo más importante)
-      score += ((miPosRealActual - miPosicion) * 1000); // Premio enorme por escalar
-      score += ((totalJugadores - miPosicion) * 500); // Premio base por estar más arriba en la tabla
-      
-      // VARIABLE 2: Brecha con el líder
+      // 🥇 VARIABLE 1: Posición (Prioridad Absoluta)
+      // Escalar puestos es lo que más puntos da. Si caigo, me destruye el score.
+      score += ((miPosRealActual - miPosicion) * 10000); 
+
+      // 🥈 VARIABLE 2: Mis Puntos (Prioridad Alta)
+      // Yo quiero sumar sí o sí. Mi éxito personal vale oro.
+      score += (miFila.ptsGanadosAhora * 200);
+
+      // 🥉 VARIABLE 3: Brecha con el líder
       let lider = rankingPrueba[0];
-      if (miPosicion === 1) score += ((miFila.puntos - rankingPrueba[1].puntos) * 100); 
-      else score -= ((lider.puntos - miFila.puntos) * 100); 
+      if (miPosicion === 1) score += ((miFila.puntos - rankingPrueba[1].puntos) * 50); 
+      else score -= ((lider.puntos - miFila.puntos) * 50); 
 
-      // VARIABLE 3: Mis puntos
-      score += (miFila.ptsGanadosAhora * 50);
-
-      // VARIABLE 4: FACTOR SANGRE (Daño a rivales - ESTO RESUELVE TU PROBLEMA DEL 4-3)
+      // 🩸 VARIABLE 4: Factor Sangre (Daño colateral)
+      // Restamos puntos al score si el resto suma, pero en su justa medida.
       let rivalesDanio = 0;
       rankingPrueba.forEach((r, idx) => {
          let posRival = idx + 1;
-         if (r.jugador.toLowerCase() === currentUser.username.toLowerCase()) return; // Yo no soy mi propio rival
+         if (r.jugador.toLowerCase() === currentUser.username.toLowerCase()) return; 
          
          let esTop3 = posRival <= 3;
-         let esCercano = Math.abs(posRival - miPosicion) <= 3; // Rivales directos pisándome los talones o apenas arriba
+         let esCercano = Math.abs(posRival - miPosicion) <= 3; // Me pisan los talones o los sigo de cerca
          
-         let pesoDano = 10; // Daño estándar
-         if (esTop3) pesoDano = 30; // Castiga si suman los punteros
-         if (esCercano) pesoDano = 50; // Castigo brutal si suma la gente que pelea el puesto conmigo
+         let pesoDano = 10; // Si un random de abajo suma, no me calienta (pesa poco)
+         if (esTop3) pesoDano = 30; // Castigo medio si suman los de arriba
+         if (esCercano) pesoDano = 60; // Castigo fuerte si suma mi competencia directa
          
          rivalesDanio += (r.ptsGanadosAhora * pesoDano);
       });
-      score -= rivalesDanio; // Restamos el éxito ajeno de mi score
+      score -= rivalesDanio; 
+
+      // ⚽ VARIABLE 5: Factor Realismo (El desempate final)
+      // A igualdad de todo lo anterior, siempre preferimos el resultado con menos goles totales.
+      let totalGolesEscenario = testL + testV;
+      score -= (totalGolesEscenario * 5);
 
       escenarios.push({
         rL: testL, rV: testV,
@@ -1851,7 +1859,7 @@ function ejecutarOraculo() {
   // Ordenamos del mejor score al peor
   escenarios.sort((a, b) => b.score - a.score);
   
-  // Normalizamos a un Porcentaje de Eficiencia (100% para el mejor, luego cae)
+  // Normalizamos a un Porcentaje de Eficiencia (100% para el mejor)
   let maxScore = escenarios[0].score;
   let minScore = escenarios[escenarios.length - 1].score;
   let rango = maxScore - minScore || 1;
