@@ -786,9 +786,10 @@ function renderRankingGeneral() {
     if (index === 0) medalla = "🥇"; if (index === 1) medalla = "🥈"; if (index === 2) medalla = "🥉";
     let esSocio = currentUser && row.jugador.toLowerCase() === currentUser.username.toLowerCase() ? 'highlight-user' : '';
 
-    // Lógica para pintar la flecha verde, roja o la raya gris
+    // Lógica para la flecha de variación 
     let badgeVariacion = '';
     if (window.mostrarVariacionRanking) {
+       let variaciones = getVariacionPosiciones();
        let diff = variaciones[row.jugador] || 0;
        if (diff > 0) {
            badgeVariacion = `<span style="color: #137333; font-size: 0.8rem; font-weight: 800; margin-left: 8px;" title="Subió ${diff} posiciones">▲ ${diff}</span>`;
@@ -799,10 +800,28 @@ function renderRankingGeneral() {
        }
     }
 
+    // ==========================================
+    // 🎬 LÓGICA: VIDEOS MEME EN BUCLE
+    // ==========================================
+    let videoMeme = '';
+    let nombreLower = row.jugador.toLowerCase();
+
+    // El video de la desgracia para MatiDeco
+    if (nombreLower === 'matideco') {
+        videoMeme = `<video src="./videos/fracaso.mp4" autoplay loop muted playsinline style="width: 35px; height: 35px; border-radius: 50%; margin-left: 8px; object-fit: cover; border: 2px solid #d93025; box-shadow: 0 2px 5px rgba(0,0,0,0.15);"></video>`;
+    } 
+    // El video del éxito para Debutante
+    else if (nombreLower === 'debutante') {
+        videoMeme = `<video src="./videos/exito.mp4" autoplay loop muted playsinline style="width: 35px; height: 35px; border-radius: 50%; margin-left: 8px; object-fit: cover; border: 2px solid #137333; box-shadow: 0 2px 5px rgba(0,0,0,0.15);"></video>`;
+    }
+    // ==========================================
+
     html += `
           <tr class="${esSocio} clickable-row" onclick="abrirPerfilJugador('${row.jugador}')">
             <td style="font-weight: 700;">${medalla}</td>
-            <td class="team-name">${row.jugador} ${badgeVariacion}</td>
+            <td class="team-name" style="display: flex; align-items: center;">
+              ${row.jugador} ${badgeVariacion} ${videoMeme}
+            </td>
             <td style="color: #666; font-size: 0.9rem;">🎯 ${row.exactos || 0}</td>
             <td class="col-pts">${row.puntos} pts</td>
           </tr>`;
