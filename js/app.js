@@ -1785,25 +1785,24 @@ function ejecutarSimulacion() {
   document.getElementById('simulador-table-container').innerHTML = generarHTMLTablaSimulada(rankingSim, `Tabla si termina ${simGL} - ${simGV}`);
 }
 
-// 4. EL ORÁCULO MATEMÁTICO 3.0 (BÚSQUEDA ABSOLUTA Y REALISTA)
+// 4. EL ORÁCULO MATEMÁTICO 3.0 (EFICIENCIA ABSOLUTA Y ALTA PRECISIÓN)
 function ejecutarOraculo() {
   const matchId = parseInt(document.getElementById('sim-partido-select').value);
   const curL = parseInt(document.getElementById('ora-gL').value) || 0;
   const curV = parseInt(document.getElementById('ora-gV').value) || 0;
 
-  let escenarios = [];
+  let todosLosEscenarios = [];
   
-  // EL FIX: Límite absoluto de goles a escanear (hasta 5 goles por equipo)
-  // Si un partido va 4-4, escanea hasta 2 goles más por las dudas.
+  // Escaneamos hasta 5 goles, o más si el partido ya tiene muchos goles
   const topeL = Math.max(5, curL + 2);
   const topeV = Math.max(5, curV + 2);
   
   let miPosRealActual = appData.ranking.findIndex(r => r.jugador.toLowerCase() === currentUser.username.toLowerCase()) + 1;
   let totalJugadores = appData.ranking.length;
 
-  // En vez de sumar "goles extra", iteramos desde el marcador actual hasta el tope absoluto
-  for (let testL = curL; testL <= topeL; testL++) {
-    for (let testV = curV; testV <= topeV; testV++) {
+  // 🌟 CAMBIO CLAVE: Empezamos a iterar SIEMPRE desde 0-0 para conocer el universo completo
+  for (let testL = 0; testL <= topeL; testL++) {
+    for (let testV = 0; testV <= topeV; testV++) {
       
       let rankingPrueba = simularRankingFicticio(matchId, testL, testV);
       
@@ -1813,18 +1812,18 @@ function ejecutarOraculo() {
       
       let score = 0;
 
-      // 🥇 VARIABLE 1: Posición (Prioridad Absoluta)
-      score += ((miPosRealActual - miPosicion) * 10000); 
+      // 🥇 VARIABLE 1: Posición (Ajustamos el peso)
+      score += ((miPosRealActual - miPosicion) * 5000); 
 
-      // 🥈 VARIABLE 2: Mis Puntos (Prioridad Alta)
-      score += (miFila.ptsGanadosAhora * 200);
+      // 🥈 VARIABLE 2: Mis Puntos
+      score += (miFila.ptsGanadosAhora * 300);
 
       // 🥉 VARIABLE 3: Brecha con el líder
       let lider = rankingPrueba[0];
-      if (miPosicion === 1) score += ((miFila.puntos - rankingPrueba[1].puntos) * 50); 
-      else score -= ((lider.puntos - miFila.puntos) * 50); 
+      if (miPosicion === 1) score += ((miFila.puntos - rankingPrueba[1].puntos) * 100); 
+      else score -= ((lider.puntos - miFila.puntos) * 100); 
 
-      // 🩸 VARIABLE 4: Factor Sangre (Daño colateral)
+      // 🩸 VARIABLE 4: Factor Sangre (Multiplicamos el castigo para que rompa empates)
       let rivalesDanio = 0;
       rankingPrueba.forEach((r, idx) => {
          let posRival = idx + 1;
@@ -1833,51 +1832,61 @@ function ejecutarOraculo() {
          let esTop3 = posRival <= 3;
          let esCercano = Math.abs(posRival - miPosicion) <= 3; 
          
-         let pesoDano = 10; 
-         if (esTop3) pesoDano = 30; 
-         if (esCercano) pesoDano = 60; 
+         let pesoDano = 20; 
+         if (esTop3) pesoDano = 60; 
+         if (esCercano) pesoDano = 120; // 💥 Castigo severo si suma un rival directo
          
          rivalesDanio += (r.ptsGanadosAhora * pesoDano);
       });
       score -= rivalesDanio; 
 
-      // ⚽ VARIABLE 5: Factor Realismo 
+      // ⚽ VARIABLE 5: Factor Realismo (Más peso para penalizar resultados con 8 goles)
       let totalGolesEscenario = testL + testV;
-      score -= (totalGolesEscenario * 5);
+      score -= (totalGolesEscenario * 30);
 
-      escenarios.push({
+      todosLosEscenarios.push({
         rL: testL, rV: testV,
         posicionMia: miPosicion,
         ptsGanadosAca: miFila.ptsGanadosAhora,
         score: score,
-        rankingGenerado: rankingPrueba
+        rankingGenerado: rankingPrueba,
+        // Guardamos si este resultado todavía puede ocurrir hoy
+        esPosible: (testL >= curL && testV >= curV) 
       });
     }
   }
 
-  // Ordenamos del mejor score al peor
-  escenarios.sort((a, b) => b.score - a.score);
-  
-  // Normalizamos a un Porcentaje de Eficiencia (100% para el mejor)
-  let maxScore = escenarios[0].score;
-  let minScore = escenarios[escenarios.length - 1].score;
-  let rango = maxScore - minScore || 1;
+  // 1. Buscamos el MEJOR y PEOR puntaje de la historia desde el 0-0
+  let maxScoreGlobal = Math.max(...todosLosEscenarios.map(e => e.score));
+  let minScoreGlobal = Math.min(...todosLosEscenarios.map(e => e.score));
+  let rangoGlobal = maxScoreGlobal - minScoreGlobal || 1;
 
-  escenarios.forEach(esc => {
-     esc.eficiencia = Math.round(((esc.score - minScore) / rango) * 100);
+  // 2. Filtramos la lista para quedarnos SOLO con los que todavía pueden pasar
+  let escenariosPosibles = todosLosEscenarios.filter(e => e.esPosible);
+
+  // 3. Los ordenamos del mejor al peor
+  escenariosPosibles.sort((a, b) => b.score - a.score);
+  
+  // 4. Calculamos la eficiencia contra el RANGO GLOBAL ABSOLUTO y le ponemos 1 decimal
+  escenariosPosibles.forEach(esc => {
+     let efi = ((esc.score - minScoreGlobal) / rangoGlobal) * 100;
+     esc.eficiencia = parseFloat(efi.toFixed(1)); // Ej: 98.4
   });
 
-  ultimosEscenariosOraculo = escenarios.slice(0, 3); // Nos quedamos solo con el Podio
+  ultimosEscenariosOraculo = escenariosPosibles.slice(0, 3);
   mostrarTop3Oraculo(miPosRealActual);
 }
 
-// 5. Renderiza el Menú Interactivo del Top 3
+// 5. Renderiza el Menú Interactivo del Top 3 actualizado
 function mostrarTop3Oraculo(posRealActual) {
   let html = `
     <div style="background: white; border: 1px solid #dcdde1; border-radius: 12px; margin: 20px 0; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-      <h3 style="color: #8e44ad; margin-top: 0; margin-bottom: 15px; text-align: center; font-size: 1.15rem;">
-        🧙‍♂️ Tus 3 Mejores Escenarios
+      <h3 style="color: #8e44ad; margin-top: 0; margin-bottom: 5px; text-align: center; font-size: 1.15rem;">
+        🧙‍♂️ Tus Mejores Opciones Posibles
       </h3>
+      <p style="font-size: 0.75rem; color: #777; text-align: center; margin-bottom: 15px; line-height: 1.3;">
+        (La % de eficiencia es absoluta. Si el 100% ideal ya no es posible, verás % más bajos).
+      </p>
       <div style="display: flex; flex-direction: column; gap: 10px;">
   `;
 
@@ -1885,7 +1894,9 @@ function mostrarTop3Oraculo(posRealActual) {
      let medalla = idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉';
      let diff = posRealActual - esc.posicionMia;
      let textoSube = diff > 0 ? `<span style="color:#137333; font-weight:bold;">Subirías ${diff} pos.</span>` : diff < 0 ? `<span style="color:#d93025; font-weight:bold;">Bajarías ${Math.abs(diff)} pos.</span>` : `<span style="color:#666; font-weight:bold;">Mantenés puesto</span>`;
-     let colorEfi = idx === 0 ? '#137333' : idx === 1 ? '#f39c12' : '#d35400';
+     
+     // El color ahora depende del número para que no sea todo verde si caemos al 60%
+     let colorEfi = esc.eficiencia >= 90 ? '#137333' : esc.eficiencia >= 70 ? '#f39c12' : '#d35400';
 
      html += `
        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8f9fa; border: 1px solid #eee; border-radius: 8px; cursor:pointer; transition: all 0.2s;" onclick="dibujarTablaSimuladaDesdeOraculo(${idx})" onmouseover="this.style.borderColor='#8e44ad'" onmouseout="this.style.borderColor='#eee'">
@@ -1916,7 +1927,7 @@ function mostrarTop3Oraculo(posRealActual) {
   `;
 
   document.getElementById('simulador-table-container').innerHTML = html;
-  dibujarTablaSimuladaDesdeOraculo(0); // Por defecto dibujamos la primera opción
+  dibujarTablaSimuladaDesdeOraculo(0); 
 }
 
 // 6. Dibuja la tabla cuando hacés clic en una de las 3 opciones
