@@ -801,29 +801,33 @@ function renderRankingGeneral() {
     }
 
     // ==========================================
-    // 🎬 LÓGICA: VIDEOS MEME EN BUCLE
+    // 🎬 LÓGICA REVISADA: VIDEOS SIN BORDES
     // ==========================================
     let videoMeme = '';
     let nombreLower = row.jugador.toLowerCase();
 
-    // El video de la desgracia para MatiDeco
+    // El video de la desgracia para MatiDeco (sin borde rojo)
     if (nombreLower === 'matideco') {
-        videoMeme = `<video src="./videos/fracaso.mp4" autoplay loop muted playsinline style="width: 35px; height: 35px; border-radius: 50%; margin-left: 8px; object-fit: cover; border: 2px solid #d93025; box-shadow: 0 2px 5px rgba(0,0,0,0.15);"></video>`;
+        videoMeme = `<video src="./videos/fracaso.mp4" autoplay loop muted playsinline style="width: 35px; height: 35px; border-radius: 50%; margin-left: 8px; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.15);"></video>`;
     } 
-    // El video del éxito para Debutante
+    // El video del éxito para Debutante (sin borde verde)
     else if (nombreLower === 'debutante') {
-        videoMeme = `<video src="./videos/exito.mp4" autoplay loop muted playsinline style="width: 35px; height: 35px; border-radius: 50%; margin-left: 8px; object-fit: cover; border: 2px solid #137333; box-shadow: 0 2px 5px rgba(0,0,0,0.15);"></video>`;
+        videoMeme = `<video src="./videos/exito.mp4" autoplay loop muted playsinline style="width: 35px; height: 35px; border-radius: 50%; margin-left: 8px; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.15);"></video>`;
     }
     // ==========================================
 
     html += `
           <tr class="${esSocio} clickable-row" onclick="abrirPerfilJugador('${row.jugador}')">
-            <td style="font-weight: 700;">${medalla}</td>
-            <td class="team-name" style="display: flex; align-items: center;">
-              ${row.jugador} ${badgeVariacion} ${videoMeme}
+            <td style="font-weight: 700; vertical-align: middle;">${medalla}</td>
+            
+            <td class="team-name" style="vertical-align: middle;">
+              <div style="display: flex; align-items: center;">
+                ${row.jugador} ${badgeVariacion} ${videoMeme}
+              </div>
             </td>
-            <td style="color: #666; font-size: 0.9rem;">🎯 ${row.exactos || 0}</td>
-            <td class="col-pts">${row.puntos} pts</td>
+            
+            <td style="color: #666; font-size: 0.9rem; vertical-align: middle;">🎯 ${row.exactos || 0}</td>
+            <td class="col-pts" style="vertical-align: middle;">${row.puntos} pts</td>
           </tr>`;
   });
   html += `</tbody></table></div>`;
