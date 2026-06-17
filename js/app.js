@@ -1623,168 +1623,24 @@ function toggleGrafico() {
   wrapper.classList.toggle('hidden');
 }
 
-function renderSimuladorInit() {
-  const container = document.getElementById('simulador-controls');
-  if(!container) return;
+// =========================================================
+// 🔮 MÓDULO SIMULADOR Y ORÁCULO
+// =========================================================
 
-  // Filtramos la totalidad de los partidos cerrados que aún no tienen resultado oficial
-  const partidosPendientesAll = appData.partidos.filter(p => 
-    p.golesL === null && 
-    p.golesV === null && 
-    appData.fases[getFaseKeyDePartidoFrontend(p.id)] === false
-  );
-
-  if(partidosPendientesAll.length === 0) {
-    container.innerHTML = '<p style="text-align: center; color: #666; font-weight: 500;">⏳ No hay partidos bloqueados pendientes de jugarse en este momento. Esperá a que el Admin cierre la próxima fase para poder simular.</p>';
-    document.getElementById('simulador-table-container').innerHTML = '';
-    return;
-  }
-
-  // 🌟 ALGORITMO MÁQUINA DEL TIEMPO: Identificamos cronológicamente la fase activa actual
-  const ordenFases = ['grupos', 'f16', 'f8', 'f4', 'semi', 'final'];
-  let faseActiva = null;
-  
-  for (let f of ordenFases) {
-    const tienePartidosPendientes = partidosPendientesAll.some(p => getFaseKeyDePartidoFrontend(p.id) === f);
-    if (tienePartidosPendientes) {
-      faseActiva = f; // Encontramos la primera fase del fixture con acción pendiente
-      break;
-    }
-  }
-
-  // Filtramos la lista para quedarnos ÚNICAMENTE con la fase que se está disputando ahora
-  const partidosPendientes = partidosPendientesAll.filter(p => getFaseKeyDePartidoFrontend(p.id) === faseActiva);
-
-  // 1. AGRUPAMOS LOS PARTIDOS POR FASE/GRUPO PARA ORDENARLOS VISUALMENTE
-  let gruposMatch = {};
-  partidosPendientes.forEach(p => {
-     let fKey = getFaseKeyDePartidoFrontend(p.id);
-     let nombreGrupo = fKey;
-     if (fKey === 'grupos') {
-         let idxGrupo = Math.floor((p.id - 1) / 6);
-         nombreGrupo = "Grupo " + String.fromCharCode(65 + idxGrupo);
-     } else {
-         let ronda = rondasFase2.find(r => r.id === fKey);
-         nombreGrupo = ronda ? ronda.nombre : "Eliminatorias";
-     }
-     if (!gruposMatch[nombreGrupo]) gruposMatch[nombreGrupo] = [];
-     gruposMatch[nombreGrupo].push(p);
-  });
-
-  // 2. ARMAMOS UN CARRUSEL DE TARJETITAS
-  let visualSelectorHtml = `<div style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 15px; margin-bottom: 10px; -webkit-overflow-scrolling: touch;">`;
-  
-  Object.keys(gruposMatch).forEach(gn => {
-     visualSelectorHtml += `
-       <div style="min-width: 220px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px;">
-        <h4 style="margin: 0 0 10px 0; font-size: 0.8rem; color: #888; text-align: center; text-transform: uppercase; letter-spacing: 1px;">${gn}</h4>
-        <div style="display: flex; flex-direction: column; gap: 8px;">`;
-     
-     gruposMatch[gn].forEach(p => {
-        visualSelectorHtml += `
-          <button id="btn-sim-match-${p.id}" class="sim-match-btn" onclick="seleccionarPartidoSimulador(${p.id})" style="background: white; border: 1px solid #ced4da; padding: 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; width: 100%; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-             <span style="font-size: 0.85rem; font-weight: 700; color: #2c3e50; text-align: left; flex:1;">${getBandera(p.local)} <span class="d-none-mobile">${p.local.substring(0,3).toUpperCase()}</span></span>
-             <span style="font-size: 0.7rem; color: #aaa; margin: 0 5px; font-weight: bold;">VS</span>
-             <span style="font-size: 0.85rem; font-weight: 700; color: #2c3e50; text-align: right; flex:1;"><span class="d-none-mobile">${p.visitante.substring(0,3).toUpperCase()}</span> ${getBandera(p.visitante)}</span>
-          </button>
-        `;
-     });
-     visualSelectorHtml += `</div></div>`;
-  });
-  visualSelectorHtml += `</div>`;
-
-  container.innerHTML = `
-    <div style="display: flex; flex-direction: column; gap: 5px;">
-      <div>
-        <label style="font-weight: 800; margin-bottom: 12px; display: block; color: #2c3e50; font-size: 1.1rem;">1. Elegí el partido:</label>
-        ${visualSelectorHtml}
-        <input type="hidden" id="sim-partido-select" value="">
-      </div>
-      
-      <div id="sim-inputs-container" style="opacity: 0.4; pointer-events: none; transition: opacity 0.3s; margin-top: 10px;">
-        <label style="font-weight: 800; margin-bottom: 12px; display: block; color: #2c3e50; font-size: 1.1rem;">2. Ingresá el resultado imaginario:</label>
-        <div style="display: flex; align-items: center; gap: 15px; justify-content: center; background: #fff; padding: 20px; border-radius: 12px; border: 2px dashed #ccc;">
-          <div style="text-align: right; width: 100px; font-weight: bold; font-size: 0.95rem; color: #555;" id="sim-name-local">Local</div>
-          <input type="number" id="sim-gL" class="inp-score" min="0" placeholder="-">
-          <span style="font-weight: 900; font-size: 1.2rem; color: #bbb;">VS</span>
-          <input type="number" id="sim-gV" class="inp-score" min="0" placeholder="-">
-          <div style="text-align: left; width: 100px; font-weight: bold; font-size: 0.95rem; color: #555;" id="sim-name-visitante">Visitante</div>
-        </div>
-        
-        <button onclick="ejecutarSimulacion()" style="width: 100%; background: linear-gradient(135deg, #8e44ad, #6c3483); color: white; border: none; padding: 16px; border-radius: 8px; font-weight: 800; cursor: pointer; font-size: 1.1rem; transition: transform 0.2s; margin-top: 20px; box-shadow: 0 4px 15px rgba(142, 68, 173, 0.3);">
-          ✨ Simular Tabla General
-        </button>
-      </div>
-    </div>
-  `;
-}
-
-// Función auxiliar para manejar el estilo de selección visual
-function seleccionarPartidoSimulador(id) {
-   // Despintamos todos
-   document.querySelectorAll('.sim-match-btn').forEach(btn => {
-       btn.style.borderColor = '#ced4da';
-       btn.style.background = 'white';
-       btn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)';
-   });
-   
-   // Pintamos el elegido
-   const activeBtn = document.getElementById(`btn-sim-match-${id}`);
-   activeBtn.style.borderColor = '#8e44ad';
-   activeBtn.style.background = '#f4e9f9';
-   activeBtn.style.boxShadow = '0 0 0 3px rgba(142,68,173,0.2)';
-
-   // Guardamos el ID en el input oculto
-   document.getElementById('sim-partido-select').value = id;
-
-   // Actualizamos los nombres al lado de los inputs
-   const p = appData.partidos.find(x => x.id === id);
-   document.getElementById('sim-name-local').innerHTML = `${p.local}<br>${getBandera(p.local)}`;
-   document.getElementById('sim-name-visitante').innerHTML = `${p.visitante}<br>${getBandera(p.visitante)}`;
-
-   // Habilitamos la zona de tipeo
-   const inputsCont = document.getElementById('sim-inputs-container');
-   inputsCont.style.opacity = '1';
-   inputsCont.style.pointerEvents = 'auto';
-}
-
-function ejecutarSimulacion() {
-  const matchIdInput = document.getElementById('sim-partido-select').value;
-  if(!matchIdInput) {
-    alert("Primero seleccioná un partido haciendo clic en su tarjeta arriba.");
-    return;
-  }
-  const matchId = parseInt(matchIdInput);
-  const simGL = document.getElementById('sim-gL').value;
-  const simGV = document.getElementById('sim-gV').value;
-
-  if(simGL === "" || simGV === "") {
-    alert("Por favor, ingresá los goles de ambos equipos para simular.");
-    return;
-  }
-
-  const rL = parseInt(simGL);
-  const rV = parseInt(simGV);
-
-  // 1. Clonamos el ranking y mapeamos los pronósticos individuales en el mismo paso
-  let rankingSimulado = appData.ranking.map(r => {
+// 1. Función auxiliar: Simula la tabla entera dados unos goles específicos
+function simularRankingFicticio(matchId, rL, rV) {
+  let rankingSim = appData.ranking.map(r => {
     let uLower = r.jugador.toLowerCase();
-    let op = null;
-    
-    if (uLower === currentUser.username.toLowerCase()) {
-      op = appData.misPronosticos[matchId];
-    } else if (appData.pronosticosOtros[matchId]) {
-      op = appData.pronosticosOtros[matchId].find(o => o.jugador.toLowerCase() === uLower);
+    let op = appData.misPronosticos[matchId];
+    if (uLower !== currentUser.username.toLowerCase()) {
+      op = appData.pronosticosOtros[matchId] ? appData.pronosticosOtros[matchId].find(o => o.jugador.toLowerCase() === uLower) : null;
     }
 
-    // Buscamos qué voto tiene cargado
-    let txtPronostico = "";
+    let txtPronostico = `<span style="color:#aaa; font-size:0.8rem; font-style: italic;">Sin cargar</span>`;
     let pts = 0;
     if (op && op.gL !== "" && op.gV !== "") {
       txtPronostico = `${op.gL} - ${op.gV}`;
       pts = calcularPuntosEnFrente(op.gL, op.gV, rL, rV);
-    } else {
-      txtPronostico = `<span style="color:#aaa; font-size:0.8rem; font-weight: normal; font-style: italic;">Sin cargar</span>`;
     }
 
     return {
@@ -1796,13 +1652,174 @@ function ejecutarSimulacion() {
     };
   });
 
-  // 2. Re-ordenamos por puntos simulados totales
-  rankingSimulado.sort((a, b) => b.puntos - a.puntos || b.exactos - a.exactos);
+  rankingSim.sort((a, b) => b.puntos - a.puntos || b.exactos - a.exactos);
+  return rankingSim;
+}
 
-  // 3. Dibujamos la tabla agregando la columna del Prode de cada uno
+// 2. Interfaz del Simulador
+function renderSimuladorInit() {
+  const container = document.getElementById('simulador-controls');
+  if(!container) return;
+
+  const partidosPendientesAll = appData.partidos.filter(p => p.golesL === null && p.golesV === null && appData.fases[getFaseKeyDePartidoFrontend(p.id)] === false);
+  if(partidosPendientesAll.length === 0) {
+    container.innerHTML = '<p style="text-align: center; color: #666; font-weight: 500;">⏳ No hay partidos bloqueados pendientes de jugarse. Esperá al próximo cierre.</p>';
+    document.getElementById('simulador-table-container').innerHTML = '';
+    return;
+  }
+
+  const ordenFases = ['grupos', 'f16', 'f8', 'f4', 'semi', 'final'];
+  let faseActiva = ordenFases.find(f => partidosPendientesAll.some(p => getFaseKeyDePartidoFrontend(p.id) === f));
+  const partidosPendientes = partidosPendientesAll.filter(p => getFaseKeyDePartidoFrontend(p.id) === faseActiva);
+
+  let gruposMatch = {};
+  partidosPendientes.forEach(p => {
+     let fKey = getFaseKeyDePartidoFrontend(p.id);
+     let nombreGrupo = fKey === 'grupos' ? "Grupo " + String.fromCharCode(65 + Math.floor((p.id - 1) / 6)) : (rondasFase2.find(r => r.id === fKey)?.nombre || "Eliminatorias");
+     if (!gruposMatch[nombreGrupo]) gruposMatch[nombreGrupo] = [];
+     gruposMatch[nombreGrupo].push(p);
+  });
+
+  let visualSelectorHtml = `<div style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 15px; margin-bottom: 10px; -webkit-overflow-scrolling: touch;">`;
+  Object.keys(gruposMatch).forEach(gn => {
+     visualSelectorHtml += `<div style="min-width: 220px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px;"><h4 style="margin: 0 0 10px 0; font-size: 0.8rem; color: #888; text-align: center; text-transform: uppercase; letter-spacing: 1px;">${gn}</h4><div style="display: flex; flex-direction: column; gap: 8px;">`;
+     gruposMatch[gn].forEach(p => {
+        visualSelectorHtml += `
+          <button id="btn-sim-match-${p.id}" class="sim-match-btn" onclick="seleccionarPartidoSimulador(${p.id})" style="background: white; border: 1px solid #ced4da; padding: 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; width: 100%; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+             <span style="font-size: 0.85rem; font-weight: 700; color: #2c3e50; text-align: left; flex:1;">${getBandera(p.local)} <span class="d-none-mobile">${p.local.substring(0,3).toUpperCase()}</span></span>
+             <span style="font-size: 0.7rem; color: #aaa; margin: 0 5px; font-weight: bold;">VS</span>
+             <span style="font-size: 0.85rem; font-weight: 700; color: #2c3e50; text-align: right; flex:1;"><span class="d-none-mobile">${p.visitante.substring(0,3).toUpperCase()}</span> ${getBandera(p.visitante)}</span>
+          </button>`;
+     });
+     visualSelectorHtml += `</div></div>`;
+  });
+  visualSelectorHtml += `</div>`;
+
+  container.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 5px;">
+      <label style="font-weight: 800; margin-bottom: 12px; display: block; color: #2c3e50; font-size: 1.1rem;">1. Elegí el partido:</label>
+      ${visualSelectorHtml}
+      <input type="hidden" id="sim-partido-select" value="">
+      
+      <div id="sim-inputs-container" style="opacity: 0.4; pointer-events: none; transition: opacity 0.3s; margin-top: 10px;">
+        
+        <div style="background: #fff; padding: 20px; border-radius: 12px; border: 2px dashed #ccc; margin-bottom: 20px;">
+            <label style="font-weight: 800; margin-bottom: 12px; display: block; color: #2c3e50; font-size: 1.1rem;">2. MODO MANUAL: Probá un resultado</label>
+            <div style="display: flex; align-items: center; gap: 15px; justify-content: center;">
+            <div style="text-align: right; width: 100px; font-weight: bold; font-size: 0.95rem; color: #555;" id="sim-name-local">Local</div>
+            <input type="number" id="sim-gL" class="inp-score" min="0" placeholder="-">
+            <span style="font-weight: 900; font-size: 1.2rem; color: #bbb;">VS</span>
+            <input type="number" id="sim-gV" class="inp-score" min="0" placeholder="-">
+            <div style="text-align: left; width: 100px; font-weight: bold; font-size: 0.95rem; color: #555;" id="sim-name-visitante">Visitante</div>
+            </div>
+            <button onclick="ejecutarSimulacion()" style="width: 100%; background: #2c3e50; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 800; cursor: pointer; font-size: 1rem; margin-top: 20px;">
+            Ver Tabla con este resultado
+            </button>
+        </div>
+
+        <div style="background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%); padding: 20px; border-radius: 12px; border: 1px solid #dcdde1; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+            <label style="font-weight: 800; margin-bottom: 5px; display: block; color: #8e44ad; font-size: 1.1rem;">🧙‍♂️ ORÁCULO: ¿Qué me conviene que pase?</label>
+            <p style="font-size: 0.8rem; color: #666; margin-bottom: 15px;">Ingresá cómo va el partido en este exacto momento para descartar resultados imposibles (Si no empezó, dejá 0-0). El sistema calculará el futuro a tu favor.</p>
+            
+            <div style="display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 15px;">
+                <span style="font-size: 0.85rem; font-weight: 700; color: #555;">Marcador Actual:</span>
+                <input type="number" id="ora-gL" class="inp-score" min="0" value="0" style="width: 40px; height: 40px; font-size: 1.2rem;">
+                <span style="font-weight: 900; color: #bbb;">-</span>
+                <input type="number" id="ora-gV" class="inp-score" min="0" value="0" style="width: 40px; height: 40px; font-size: 1.2rem;">
+            </div>
+            <button onclick="ejecutarOraculo()" style="width: 100%; background: linear-gradient(135deg, #8e44ad, #6c3483); color: white; border: none; padding: 14px; border-radius: 8px; font-weight: 800; cursor: pointer; font-size: 1.05rem; box-shadow: 0 4px 10px rgba(142, 68, 173, 0.3);">
+            ✨ Calcular Mejor Escenario
+            </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function seleccionarPartidoSimulador(id) {
+   document.querySelectorAll('.sim-match-btn').forEach(btn => { btn.style.borderColor = '#ced4da'; btn.style.background = 'white'; btn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'; });
+   const activeBtn = document.getElementById(`btn-sim-match-${id}`);
+   activeBtn.style.borderColor = '#8e44ad'; activeBtn.style.background = '#f4e9f9'; activeBtn.style.boxShadow = '0 0 0 3px rgba(142,68,173,0.2)';
+   document.getElementById('sim-partido-select').value = id;
+   const p = appData.partidos.find(x => x.id === id);
+   document.getElementById('sim-name-local').innerHTML = `${p.local}<br>${getBandera(p.local)}`;
+   document.getElementById('sim-name-visitante').innerHTML = `${p.visitante}<br>${getBandera(p.visitante)}`;
+   const inputsCont = document.getElementById('sim-inputs-container');
+   inputsCont.style.opacity = '1'; inputsCont.style.pointerEvents = 'auto';
+   document.getElementById('simulador-table-container').innerHTML = ''; // Limpiamos tabla anterior
+}
+
+// 3. Botón Manual clásico
+function ejecutarSimulacion() {
+  const matchId = parseInt(document.getElementById('sim-partido-select').value);
+  const simGL = document.getElementById('sim-gL').value;
+  const simGV = document.getElementById('sim-gV').value;
+  if(simGL === "" || simGV === "") return alert("Ingresá goles.");
+  
+  let rankingSim = simularRankingFicticio(matchId, parseInt(simGL), parseInt(simGV));
+  dibujarTablaSimulada(rankingSim, `Tabla si termina ${simGL} - ${simGV}`);
+}
+
+// 4. EL ORÁCULO MATEMÁTICO
+function ejecutarOraculo() {
+  const matchId = parseInt(document.getElementById('sim-partido-select').value);
+  const curL = parseInt(document.getElementById('ora-gL').value) || 0;
+  const curV = parseInt(document.getElementById('ora-gV').value) || 0;
+
+  let escenarios = [];
+  const maxGolesExtra = 4; // Probamos hasta 4 goles más por equipo desde el momento actual
+
+  for (let addL = 0; addL <= maxGolesExtra; addL++) {
+    for (let addV = 0; addV <= maxGolesExtra; addV++) {
+      let testL = curL + addL;
+      let testV = curV + addV;
+      
+      let rankingPrueba = simularRankingFicticio(matchId, testL, testV);
+      
+      let miIndex = rankingPrueba.findIndex(r => r.jugador.toLowerCase() === currentUser.username.toLowerCase());
+      let miFila = rankingPrueba[miIndex];
+      let miPosicion = miIndex + 1;
+      
+      let lider = rankingPrueba[0];
+      // Si yo soy el líder, quiero alejarme del 2do. Si no, quiero acercarme al 1ro.
+      let gap = miPosicion === 1 ? (miFila.puntos - rankingPrueba[1].puntos) : (lider.puntos - miFila.puntos);
+
+      escenarios.push({
+        rL: testL, rV: testV,
+        posicionMia: miPosicion,
+        gapPuntos: gap,
+        misPuntos: miFila.puntos,
+        ptsGanadosAca: miFila.ptsGanadosAhora,
+        rankingGenerado: rankingPrueba
+      });
+    }
+  }
+
+  // Ordenamos para encontrar EL MEJOR (Posición más baja es mejor)
+  escenarios.sort((a, b) => {
+    if (a.posicionMia !== b.posicionMia) return a.posicionMia - b.posicionMia;
+    if (a.posicionMia === 1) return b.gapPuntos - a.gapPuntos; // Si soy 1ro, mayor gap es mejor
+    return a.gapPuntos - b.gapPuntos; // Si no soy 1ro, menor gap es mejor
+  });
+
+  const mejor = escenarios[0];
+
+  // Mostramos el resultado y dibujamos la tabla de ese escenario
+  let mensaje = `<div style="background: #e6f4ea; border-left: 4px solid #137333; padding: 15px; border-radius: 6px; margin: 20px 0; font-size: 1.05rem;">
+    <strong>🧙‍♂️ El Oráculo habló:</strong><br>
+    Tu mejor escenario posible a partir de ahora es que el partido termine <strong style="font-size: 1.3rem; color: #137333;">${mejor.rL} - ${mejor.rV}</strong>.<br>
+    <span style="font-size: 0.9rem; color: #555;">Eso te dejaría en la posición #${mejor.posicionMia} y sumarías +${mejor.ptsGanadosAca} pts.</span>
+  </div>`;
+  
+  dibujarTablaSimulada(mejor.rankingGenerado, `Tabla Ideal (Si termina ${mejor.rL} - ${mejor.rV})`, mensaje);
+}
+
+// 5. Dibujado de la tabla final
+function dibujarTablaSimulada(rankingSimulado, titulo, mensajeExtra = '') {
   let html = `
+    ${mensajeExtra}
     <h3 style="margin: 30px 0 15px 0; text-align: center; color: #8e44ad; border-top: 2px dashed #e9ecef; padding-top: 25px;">
-      📊 Así quedaría la tabla general
+      📊 ${titulo}
     </h3>
     <div class="table-container">
       <table class="standings-table">
@@ -1820,26 +1837,13 @@ function ejecutarSimulacion() {
 
   rankingSimulado.forEach((row, index) => {
     let posSimulada = index + 1;
-    let medalla = posSimulada;
-    if (posSimulada === 1) medalla = "🥇"; if (posSimulada === 2) medalla = "🥈"; if (posSimulada === 3) medalla = "🥉";
+    let medalla = posSimulada === 1 ? "🥇" : posSimulada === 2 ? "🥈" : posSimulada === 3 ? "🥉" : posSimulada;
     let esSocio = currentUser && row.jugador.toLowerCase() === currentUser.username.toLowerCase() ? 'highlight-user' : '';
-
-    let badgePuntos = row.ptsGanadosAhora > 0 
-      ? `<span style="background: #e6f4ea; color: #137333; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #cce8d6;">+${row.ptsGanadosAhora}</span>` 
-      : `<span style="color: #bbb; font-weight: 600;">0</span>`;
+    let badgePuntos = row.ptsGanadosAhora > 0 ? `<span style="background: #e6f4ea; color: #137333; padding: 4px 8px; border-radius: 4px; font-weight: 800;">+${row.ptsGanadosAhora}</span>` : `<span style="color: #bbb; font-weight: 600;">0</span>`;
 
     let posRealIndex = appData.ranking.findIndex(r => r.jugador === row.jugador);
-    let posRealActual = posRealIndex > -1 ? posRealIndex + 1 : posSimulada;
-    let diff = posRealActual - posSimulada; 
-    
-    let badgeVariacion = '';
-    if (diff > 0) {
-       badgeVariacion = `<span style="color: #137333; font-size: 0.8rem; font-weight: 800; margin-left: 8px;" title="Subiría ${diff} posiciones en la vida real">▲ ${diff}</span>`;
-    } else if (diff < 0) {
-       badgeVariacion = `<span style="color: #d93025; font-size: 0.8rem; font-weight: 800; margin-left: 8px;" title="Bajaría ${Math.abs(diff)} posiciones en la vida real">▼ ${Math.abs(diff)}</span>`;
-    } else {
-       badgeVariacion = `<span style="color: #999; font-size: 0.8rem; font-weight: 800; margin-left: 8px;" title="Mantendría su posición actual">➖</span>`;
-    }
+    let diff = (posRealIndex > -1 ? posRealIndex + 1 : posSimulada) - posSimulada; 
+    let badgeVariacion = diff > 0 ? `<span style="color:#137333; font-size:0.8rem; font-weight:800; margin-left:8px;">▲ ${diff}</span>` : diff < 0 ? `<span style="color:#d93025; font-size:0.8rem; font-weight:800; margin-left:8px;">▼ ${Math.abs(diff)}</span>` : `<span style="color:#999; font-size:0.8rem; font-weight:800; margin-left:8px;">➖</span>`;
 
     html += `
           <tr class="${esSocio}">
@@ -1851,7 +1855,6 @@ function ejecutarSimulacion() {
           </tr>`;
   });
   html += `</tbody></table></div>`;
-
   document.getElementById('simulador-table-container').innerHTML = html;
 }
 
