@@ -806,13 +806,13 @@ function renderRankingGeneral() {
     let videoMeme = '';
     let nombreLower = row.jugador.toLowerCase();
 
-    // El video de la desgracia para MatiDeco (sin borde rojo)
+    // El video de la desgracia para MatiDeco
     if (nombreLower === 'matideco') {
-        videoMeme = `<video src="./videos/fracaso.mp4" autoplay loop muted playsinline style="width: 35px; height: 35px; border-radius: 50%; margin-left: 8px; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.15);"></video>`;
+        videoMeme = `<video src="./videos/fracaso.mp4" autoplay loop muted playsinline style="width: 45px; height: 45px; border-radius: 50%; margin-left: 12px; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.15);"></video>`;
     } 
-    // El video del éxito para Debutante (sin borde verde)
+    // El video del éxito para Debutante
     else if (nombreLower === 'debutante') {
-        videoMeme = `<video src="./videos/exito.mp4" autoplay loop muted playsinline style="width: 35px; height: 35px; border-radius: 50%; margin-left: 8px; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.15);"></video>`;
+        videoMeme = `<video src="./videos/exito.mp4" autoplay loop muted playsinline style="width: 45px; height: 45px; border-radius: 50%; margin-left: 12px; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.15);"></video>`;
     }
     // ==========================================
 
