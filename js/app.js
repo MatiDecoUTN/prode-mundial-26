@@ -1785,22 +1785,18 @@ function ejecutarSimulacion() {
   document.getElementById('simulador-table-container').innerHTML = generarHTMLTablaSimulada(rankingSim, `Tabla si termina ${simGL} - ${simGV}`);
 }
 
-// 4. EL ORÁCULO MATEMÁTICO 3.0 (EFICIENCIA ABSOLUTA Y ALTA PRECISIÓN)
+// 4. EL ORÁCULO MATEMÁTICO 4.0 (VECTOR DISTANCIA Y DIFERENCIAL NETO)
 function ejecutarOraculo() {
   const matchId = parseInt(document.getElementById('sim-partido-select').value);
   const curL = parseInt(document.getElementById('ora-gL').value) || 0;
   const curV = parseInt(document.getElementById('ora-gV').value) || 0;
 
   let todosLosEscenarios = [];
-  
-  // Escaneamos hasta 5 goles, o más si el partido ya tiene muchos goles
   const topeL = Math.max(5, curL + 2);
   const topeV = Math.max(5, curV + 2);
   
   let miPosRealActual = appData.ranking.findIndex(r => r.jugador.toLowerCase() === currentUser.username.toLowerCase()) + 1;
-  let totalJugadores = appData.ranking.length;
 
-  // 🌟 CAMBIO CLAVE: Empezamos a iterar SIEMPRE desde 0-0 para conocer el universo completo
   for (let testL = 0; testL <= topeL; testL++) {
     for (let testV = 0; testV <= topeV; testV++) {
       
@@ -1812,37 +1808,44 @@ function ejecutarOraculo() {
       
       let score = 0;
 
-      // 🥇 VARIABLE 1: Posición (Ajustamos el peso)
-      score += ((miPosRealActual - miPosicion) * 5000); 
+      // 🥇 VARIABLE 1: Mi Éxito Personal (Ahora tiene un peso BRUTAL para evitar el masoquismo)
+      score += (miFila.ptsGanadosAhora * 2000); 
 
-      // 🥈 VARIABLE 2: Mis Puntos
-      score += (miFila.ptsGanadosAhora * 300);
+      // 🥈 VARIABLE 2: Posición Neta
+      score += ((miPosRealActual - miPosicion) * 3000); 
 
-      // 🥉 VARIABLE 3: Brecha con el líder
-      let lider = rankingPrueba[0];
-      if (miPosicion === 1) score += ((miFila.puntos - rankingPrueba[1].puntos) * 100); 
-      else score -= ((lider.puntos - miFila.puntos) * 100); 
-
-      // 🩸 VARIABLE 4: Factor Sangre (Multiplicamos el castigo para que rompa empates)
-      let rivalesDanio = 0;
-      rankingPrueba.forEach((r, idx) => {
-         let posRival = idx + 1;
+      // 🧠 VARIABLE 3: EL VECTOR DISTANCIA (Tu idea implementada)
+      // Calculamos el diferencial de puntos contra cada rival y lo multiplicamos por su importancia
+      let scoreDiferencial = 0;
+      
+      rankingPrueba.forEach((r) => {
          if (r.jugador.toLowerCase() === currentUser.username.toLowerCase()) return; 
          
-         let esTop3 = posRival <= 3;
-         let esCercano = Math.abs(posRival - miPosicion) <= 3; 
+         // Buscamos dónde estaba este rival ANTES de simular el partido
+         let posRivalInicial = appData.ranking.findIndex(x => x.jugador === r.jugador) + 1;
          
-         let pesoDano = 20; 
-         if (esTop3) pesoDano = 60; 
-         if (esCercano) pesoDano = 120; // 💥 Castigo severo si suma un rival directo
+         // Diferencial neto: Si yo sumo 3 y él 0, da +3. Si yo 0 y él 3, da -3. Si ambos 3, da 0.
+         let diffPuntos = miFila.ptsGanadosAhora - r.ptsGanadosAhora; 
          
-         rivalesDanio += (r.ptsGanadosAhora * pesoDano);
+         // Distancia absoluta en la tabla entre el rival y yo
+         let distanciaTabla = Math.abs(miPosRealActual - posRivalInicial);
+         
+         let pesoVector = 10; // Peso base para los randoms de la tabla
+         
+         if (distanciaTabla === 1) pesoVector = 150; // El que está pegado arriba o abajo mío vale oro
+         else if (distanciaTabla <= 3) pesoVector = 80; // Rivales muy cercanos
+         else if (distanciaTabla <= 6) pesoVector = 30; // Rivales a media distancia
+         
+         if (posRivalInicial <= 3) pesoVector += 60; // Extra si el rival está en el podio (quiero que caiga)
+         
+         scoreDiferencial += (diffPuntos * pesoVector);
       });
-      score -= rivalesDanio; 
+      
+      score += scoreDiferencial; 
 
-      // ⚽ VARIABLE 5: Factor Realismo (Más peso para penalizar resultados con 8 goles)
+      // ⚽ VARIABLE 4: Factor Realismo 
       let totalGolesEscenario = testL + testV;
-      score -= (totalGolesEscenario * 30);
+      score -= (totalGolesEscenario * 20);
 
       todosLosEscenarios.push({
         rL: testL, rV: testV,
@@ -1850,7 +1853,6 @@ function ejecutarOraculo() {
         ptsGanadosAca: miFila.ptsGanadosAhora,
         score: score,
         rankingGenerado: rankingPrueba,
-        // Guardamos si este resultado todavía puede ocurrir hoy
         esPosible: (testL >= curL && testV >= curV) 
       });
     }
@@ -1861,16 +1863,16 @@ function ejecutarOraculo() {
   let minScoreGlobal = Math.min(...todosLosEscenarios.map(e => e.score));
   let rangoGlobal = maxScoreGlobal - minScoreGlobal || 1;
 
-  // 2. Filtramos la lista para quedarnos SOLO con los que todavía pueden pasar
+  // 2. Filtramos SOLO los que todavía pueden pasar
   let escenariosPosibles = todosLosEscenarios.filter(e => e.esPosible);
 
   // 3. Los ordenamos del mejor al peor
   escenariosPosibles.sort((a, b) => b.score - a.score);
   
-  // 4. Calculamos la eficiencia contra el RANGO GLOBAL ABSOLUTO y le ponemos 1 decimal
+  // 4. Calculamos la eficiencia contra el RANGO GLOBAL ABSOLUTO
   escenariosPosibles.forEach(esc => {
      let efi = ((esc.score - minScoreGlobal) / rangoGlobal) * 100;
-     esc.eficiencia = parseFloat(efi.toFixed(1)); // Ej: 98.4
+     esc.eficiencia = parseFloat(efi.toFixed(1)); 
   });
 
   ultimosEscenariosOraculo = escenariosPosibles.slice(0, 3);
