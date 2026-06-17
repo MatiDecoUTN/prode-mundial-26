@@ -1785,7 +1785,7 @@ function ejecutarSimulacion() {
   document.getElementById('simulador-table-container').innerHTML = generarHTMLTablaSimulada(rankingSim, `Tabla si termina ${simGL} - ${simGV}`);
 }
 
-// 4. EL ORÁCULO MATEMÁTICO 5.0 (ALTA PRECISIÓN Y MEMORIA HISTÓRICA)
+// 4. EL ORÁCULO MATEMÁTICO 7.0 (EXPLICACIONES CON NOMBRE Y APELLIDO)
 function ejecutarOraculo() {
   const matchId = parseInt(document.getElementById('sim-partido-select').value);
   const curL = parseInt(document.getElementById('ora-gL').value) || 0;
@@ -1806,15 +1806,11 @@ function ejecutarOraculo() {
       let miPosicion = miIndex + 1;
       
       let score = 0;
-
-      // 🥇 VARIABLE 1: Mi Éxito Personal 
       score += (miFila.ptsGanadosAhora * 2000); 
-
-      // 🥈 VARIABLE 2: Posición Neta
       score += ((miPosRealActual - miPosicion) * 3000); 
 
-      // 🧠 VARIABLE 3: EL VECTOR DISTANCIA (Ajustado para que duelan todos)
       let scoreDiferencial = 0;
+      let impactosNegativos = []; // Acá guardamos quién suma y cuánto nos duele
       
       rankingPrueba.forEach((r) => {
          if (r.jugador.toLowerCase() === currentUser.username.toLowerCase()) return; 
@@ -1823,50 +1819,54 @@ function ejecutarOraculo() {
          let diffPuntos = miFila.ptsGanadosAhora - r.ptsGanadosAhora; 
          let distanciaTabla = Math.abs(miPosRealActual - posRivalInicial);
          
-         // Subimos la base a 40 para que el último de la tabla también mueva la aguja de los decimales
          let pesoVector = 40; 
-         
          if (distanciaTabla === 1) pesoVector = 200; 
          else if (distanciaTabla <= 3) pesoVector = 120; 
          else if (distanciaTabla <= 6) pesoVector = 70; 
-         
          if (posRivalInicial <= 3) pesoVector += 80; 
          
          scoreDiferencial += (diffPuntos * pesoVector);
+
+         // Si el rival sumó puntos, lo anotamos en la lista negra
+         if (r.ptsGanadosAhora > 0) {
+             impactosNegativos.push({
+                 nombre: r.jugador,
+                 pts: r.ptsGanadosAhora,
+                 dolor: r.ptsGanadosAhora * pesoVector // Calculamos qué tan grave es para vos
+             });
+         }
       });
       
       score += scoreDiferencial; 
 
-      // ⚽ VARIABLE 4: Factor Realismo 
       let totalGolesEscenario = testL + testV;
       score -= (totalGolesEscenario * 20);
+
+      // Ordenamos a los rivales que sumaron de mayor a menor "dolor" para vos
+      impactosNegativos.sort((a, b) => b.dolor - a.dolor);
 
       todosLosEscenarios.push({
         rL: testL, rV: testV,
         posicionMia: miPosicion,
         ptsGanadosAca: miFila.ptsGanadosAhora,
         score: score,
+        villanos: impactosNegativos.slice(0, 2), // Nos quedamos solo con los 2 peores para no saturar
+        totalRivalesSumaron: impactosNegativos.length,
+        totalGoles: totalGolesEscenario,
         rankingGenerado: rankingPrueba,
         esPosible: (testL >= curL && testV >= curV) 
       });
     }
   }
 
-  // 1. Buscamos el MEJOR y PEOR puntaje absoluto desde el 0-0
   let maxScoreGlobal = Math.max(...todosLosEscenarios.map(e => e.score));
   let minScoreGlobal = Math.min(...todosLosEscenarios.map(e => e.score));
   let rangoGlobal = maxScoreGlobal - minScoreGlobal || 1;
 
-  // 2. Extraemos el escenario perfecto histórico para mostrarlo como referencia
   let idealAbsoluto = todosLosEscenarios.reduce((prev, curr) => (prev.score > curr.score) ? prev : curr);
-
-  // 3. Filtramos los que todavía pueden pasar
   let escenariosPosibles = todosLosEscenarios.filter(e => e.esPosible);
-
-  // 4. Los ordenamos
   escenariosPosibles.sort((a, b) => b.score - a.score);
   
-  // 5. Calculamos la eficiencia contra el RANGO GLOBAL (Ahora con 2 decimales para romper empates visuales)
   escenariosPosibles.forEach(esc => {
      let efi = ((esc.score - minScoreGlobal) / rangoGlobal) * 100;
      esc.eficiencia = parseFloat(efi.toFixed(2)); 
@@ -1878,21 +1878,23 @@ function ejecutarOraculo() {
 
 // 5. Renderiza el Menú Interactivo del Top 3
 function mostrarTop3Oraculo(posRealActual, idealAbsoluto) {
-  // Lógica para el banner del 100% histórico
   let bannerIdealHTML = '';
   if (!idealAbsoluto.esPosible) {
     bannerIdealHTML = `
       <div style="background: #fff3cd; color: #856404; padding: 10px 15px; border-radius: 8px; font-size: 0.85rem; text-align: center; margin-bottom: 15px; border: 1px solid #ffeeba; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-        💡 <strong>Referencia:</strong> El resultado ideal absoluto era <strong>${idealAbsoluto.rL} - ${idealAbsoluto.rV}</strong> (100%), pero ya no es posible.
+        💡 <strong>Referencia:</strong> El resultado ideal histórico era <strong>${idealAbsoluto.rL} - ${idealAbsoluto.rV}</strong> (100%), pero ya no es posible.
       </div>
     `;
   }
 
   let html = `
     <div style="background: white; border: 1px solid #dcdde1; border-radius: 12px; margin: 20px 0; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-      <h3 style="color: #8e44ad; margin-top: 0; margin-bottom: 15px; text-align: center; font-size: 1.15rem;">
+      <h3 style="color: #8e44ad; margin-top: 0; margin-bottom: 5px; text-align: center; font-size: 1.15rem;">
         🧙‍♂️ Tus Mejores Opciones Posibles
       </h3>
+      <p style="font-size: 0.75rem; color: #777; text-align: center; margin-bottom: 15px; line-height: 1.3;">
+        (La % de eficiencia es absoluta. Si el 100% ideal ya no es posible, verás % más bajos).
+      </p>
       
       ${bannerIdealHTML}
 
@@ -1905,6 +1907,34 @@ function mostrarTop3Oraculo(posRealActual, idealAbsoluto) {
      let textoSube = diff > 0 ? `<span style="color:#137333; font-weight:bold;">Subirías ${diff} pos.</span>` : diff < 0 ? `<span style="color:#d93025; font-weight:bold;">Bajarías ${Math.abs(diff)} pos.</span>` : `<span style="color:#666; font-weight:bold;">Mantenés puesto</span>`;
      let colorEfi = esc.eficiencia >= 90 ? '#137333' : esc.eficiencia >= 70 ? '#f39c12' : '#d35400';
 
+     // 🏷️ GENERADOR DE ETIQUETAS CON NOMBRE Y APELLIDO
+     let insights = [];
+     
+     // 1. Lo bueno tuyo
+     if (esc.ptsGanadosAca === 7) insights.push("🎯 Clavás un pleno (+7)");
+     
+     // 2. Lo malo de los demás (mostramos a los 2 peores)
+     if (esc.villanos.length === 0 && esc.ptsGanadosAca > 0) {
+         insights.push("🛡️ Tus rivales no suman");
+     } else {
+         esc.villanos.forEach(v => {
+             insights.push(`⚠️ ${v.nombre} suma +${v.pts}`);
+         });
+         
+         // Si hay más gente que suma, agregamos un "y X más..." genérico
+         let ocultos = esc.totalRivalesSumaron - esc.villanos.length;
+         if (ocultos > 0) insights.push(`y ${ocultos} más...`);
+     }
+
+     // 3. Castigo por resultado raro
+     if (esc.totalGoles > 5) insights.push(`⚽ Muchos goles`);
+
+     let htmlInsights = insights.map(i => {
+         let bg = i.includes('⚠️') ? '#fdf3f4' : i.includes('🎯') || i.includes('🛡️') ? '#e6f4ea' : '#e9ecef';
+         let col = i.includes('⚠️') ? '#d93025' : i.includes('🎯') || i.includes('🛡️') ? '#137333' : '#555';
+         return `<span style="display:inline-block; background: ${bg}; padding: 3px 6px; border-radius: 4px; font-size: 0.65rem; color: ${col}; margin-right: 4px; margin-top: 6px; font-weight: 600; border: 1px solid ${col}40;">${i}</span>`;
+     }).join('');
+
      html += `
        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8f9fa; border: 1px solid #eee; border-radius: 8px; cursor:pointer; transition: all 0.2s;" onclick="dibujarTablaSimuladaDesdeOraculo(${idx})" onmouseover="this.style.borderColor='#8e44ad'" onmouseout="this.style.borderColor='#eee'">
          <div style="display: flex; align-items: center; gap: 12px;">
@@ -1913,6 +1943,9 @@ function mostrarTop3Oraculo(posRealActual, idealAbsoluto) {
              <div style="font-weight: 900; font-size: 1.2rem; color: #2c3e50;">${esc.rL} - ${esc.rV}</div>
              <div style="font-size: 0.8rem; color: #555; margin-top: 2px;">
                ${textoSube} | Sumás +${esc.ptsGanadosAca} pts
+             </div>
+             <div>
+               ${htmlInsights}
              </div>
            </div>
          </div>
