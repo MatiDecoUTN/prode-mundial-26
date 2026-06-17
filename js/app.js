@@ -1647,8 +1647,10 @@ function toggleGrafico() {
 }
 
 // =========================================================
-// 🔮 MÓDULO SIMULADOR Y ORÁCULO
+// 🔮 MÓDULO SIMULADOR Y ORÁCULO 2.0 (TEORÍA DE JUEGOS)
 // =========================================================
+
+let ultimosEscenariosOraculo = [];
 
 // 1. Función auxiliar: Simula la tabla entera dados unos goles específicos
 function simularRankingFicticio(matchId, rL, rV) {
@@ -1741,8 +1743,8 @@ function renderSimuladorInit() {
         </div>
 
         <div style="background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%); padding: 20px; border-radius: 12px; border: 1px solid #dcdde1; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-            <label style="font-weight: 800; margin-bottom: 5px; display: block; color: #8e44ad; font-size: 1.1rem;">🧙‍♂️ ORÁCULO: ¿Qué me conviene que pase?</label>
-            <p style="font-size: 0.8rem; color: #666; margin-bottom: 15px;">Ingresá cómo va el partido en este exacto momento para descartar resultados imposibles (Si no empezó, dejá 0-0). El sistema calculará el futuro a tu favor.</p>
+            <label style="font-weight: 800; margin-bottom: 5px; display: block; color: #8e44ad; font-size: 1.1rem;">🧙‍♂️ ORÁCULO: Ranking de Eficiencia</label>
+            <p style="font-size: 0.8rem; color: #666; margin-bottom: 15px;">Ingresá cómo va el partido ahora mismo (Si no empezó, dejá 0-0). El sistema penalizará los resultados que beneficien a tus rivales directos y armará tu Top 3 ideal.</p>
             
             <div style="display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 15px;">
                 <span style="font-size: 0.85rem; font-weight: 700; color: #555;">Marcador Actual:</span>
@@ -1751,7 +1753,7 @@ function renderSimuladorInit() {
                 <input type="number" id="ora-gV" class="inp-score" min="0" value="0" style="width: 40px; height: 40px; font-size: 1.2rem;">
             </div>
             <button onclick="ejecutarOraculo()" style="width: 100%; background: linear-gradient(135deg, #8e44ad, #6c3483); color: white; border: none; padding: 14px; border-radius: 8px; font-weight: 800; cursor: pointer; font-size: 1.05rem; box-shadow: 0 4px 10px rgba(142, 68, 173, 0.3);">
-            ✨ Calcular Mejor Escenario
+            ✨ Calcular Mejores Escenarios
             </button>
         </div>
       </div>
@@ -1769,7 +1771,7 @@ function seleccionarPartidoSimulador(id) {
    document.getElementById('sim-name-visitante').innerHTML = `${p.visitante}<br>${getBandera(p.visitante)}`;
    const inputsCont = document.getElementById('sim-inputs-container');
    inputsCont.style.opacity = '1'; inputsCont.style.pointerEvents = 'auto';
-   document.getElementById('simulador-table-container').innerHTML = ''; // Limpiamos tabla anterior
+   document.getElementById('simulador-table-container').innerHTML = ''; 
 }
 
 // 3. Botón Manual clásico
@@ -1780,17 +1782,19 @@ function ejecutarSimulacion() {
   if(simGL === "" || simGV === "") return alert("Ingresá goles.");
   
   let rankingSim = simularRankingFicticio(matchId, parseInt(simGL), parseInt(simGV));
-  dibujarTablaSimulada(rankingSim, `Tabla si termina ${simGL} - ${simGV}`);
+  document.getElementById('simulador-table-container').innerHTML = generarHTMLTablaSimulada(rankingSim, `Tabla si termina ${simGL} - ${simGV}`);
 }
 
-// 4. EL ORÁCULO MATEMÁTICO
+// 4. EL ORÁCULO MATEMÁTICO 2.0 (FACTOR SANGRE)
 function ejecutarOraculo() {
   const matchId = parseInt(document.getElementById('sim-partido-select').value);
   const curL = parseInt(document.getElementById('ora-gL').value) || 0;
   const curV = parseInt(document.getElementById('ora-gV').value) || 0;
 
   let escenarios = [];
-  const maxGolesExtra = 4; // Probamos hasta 4 goles más por equipo desde el momento actual
+  const maxGolesExtra = 4; 
+  let miPosRealActual = appData.ranking.findIndex(r => r.jugador.toLowerCase() === currentUser.username.toLowerCase()) + 1;
+  let totalJugadores = appData.ranking.length;
 
   for (let addL = 0; addL <= maxGolesExtra; addL++) {
     for (let addV = 0; addV <= maxGolesExtra; addV++) {
@@ -1803,56 +1807,133 @@ function ejecutarOraculo() {
       let miFila = rankingPrueba[miIndex];
       let miPosicion = miIndex + 1;
       
+      let score = 0;
+
+      // VARIABLE 1: Posición (Es lo más importante)
+      score += ((miPosRealActual - miPosicion) * 1000); // Premio enorme por escalar
+      score += ((totalJugadores - miPosicion) * 500); // Premio base por estar más arriba en la tabla
+      
+      // VARIABLE 2: Brecha con el líder
       let lider = rankingPrueba[0];
-      // Si yo soy el líder, quiero alejarme del 2do. Si no, quiero acercarme al 1ro.
-      let gap = miPosicion === 1 ? (miFila.puntos - rankingPrueba[1].puntos) : (lider.puntos - miFila.puntos);
+      if (miPosicion === 1) score += ((miFila.puntos - rankingPrueba[1].puntos) * 100); 
+      else score -= ((lider.puntos - miFila.puntos) * 100); 
+
+      // VARIABLE 3: Mis puntos
+      score += (miFila.ptsGanadosAhora * 50);
+
+      // VARIABLE 4: FACTOR SANGRE (Daño a rivales - ESTO RESUELVE TU PROBLEMA DEL 4-3)
+      let rivalesDanio = 0;
+      rankingPrueba.forEach((r, idx) => {
+         let posRival = idx + 1;
+         if (r.jugador.toLowerCase() === currentUser.username.toLowerCase()) return; // Yo no soy mi propio rival
+         
+         let esTop3 = posRival <= 3;
+         let esCercano = Math.abs(posRival - miPosicion) <= 3; // Rivales directos pisándome los talones o apenas arriba
+         
+         let pesoDano = 10; // Daño estándar
+         if (esTop3) pesoDano = 30; // Castiga si suman los punteros
+         if (esCercano) pesoDano = 50; // Castigo brutal si suma la gente que pelea el puesto conmigo
+         
+         rivalesDanio += (r.ptsGanadosAhora * pesoDano);
+      });
+      score -= rivalesDanio; // Restamos el éxito ajeno de mi score
 
       escenarios.push({
         rL: testL, rV: testV,
         posicionMia: miPosicion,
-        gapPuntos: gap,
-        misPuntos: miFila.puntos,
         ptsGanadosAca: miFila.ptsGanadosAhora,
+        score: score,
         rankingGenerado: rankingPrueba
       });
     }
   }
 
-  // Ordenamos para encontrar EL MEJOR (Posición más baja es mejor)
-  escenarios.sort((a, b) => {
-    if (a.posicionMia !== b.posicionMia) return a.posicionMia - b.posicionMia;
-    if (a.posicionMia === 1) return b.gapPuntos - a.gapPuntos; // Si soy 1ro, mayor gap es mejor
-    return a.gapPuntos - b.gapPuntos; // Si no soy 1ro, menor gap es mejor
+  // Ordenamos del mejor score al peor
+  escenarios.sort((a, b) => b.score - a.score);
+  
+  // Normalizamos a un Porcentaje de Eficiencia (100% para el mejor, luego cae)
+  let maxScore = escenarios[0].score;
+  let minScore = escenarios[escenarios.length - 1].score;
+  let rango = maxScore - minScore || 1;
+
+  escenarios.forEach(esc => {
+     esc.eficiencia = Math.round(((esc.score - minScore) / rango) * 100);
   });
 
-  const mejor = escenarios[0];
-
-  // Mostramos el resultado y dibujamos la tabla de ese escenario
-  let mensaje = `<div style="background: #e6f4ea; border-left: 4px solid #137333; padding: 15px; border-radius: 6px; margin: 20px 0; font-size: 1.05rem;">
-    <strong>🧙‍♂️ El Oráculo habló:</strong><br>
-    Tu mejor escenario posible a partir de ahora es que el partido termine <strong style="font-size: 1.3rem; color: #137333;">${mejor.rL} - ${mejor.rV}</strong>.<br>
-    <span style="font-size: 0.9rem; color: #555;">Eso te dejaría en la posición #${mejor.posicionMia} y sumarías +${mejor.ptsGanadosAca} pts.</span>
-  </div>`;
-  
-  dibujarTablaSimulada(mejor.rankingGenerado, `Tabla Ideal (Si termina ${mejor.rL} - ${mejor.rV})`, mensaje);
+  ultimosEscenariosOraculo = escenarios.slice(0, 3); // Nos quedamos solo con el Podio
+  mostrarTop3Oraculo(miPosRealActual);
 }
 
-// 5. Dibujado de la tabla final
-function dibujarTablaSimulada(rankingSimulado, titulo, mensajeExtra = '') {
+// 5. Renderiza el Menú Interactivo del Top 3
+function mostrarTop3Oraculo(posRealActual) {
   let html = `
-    ${mensajeExtra}
+    <div style="background: white; border: 1px solid #dcdde1; border-radius: 12px; margin: 20px 0; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+      <h3 style="color: #8e44ad; margin-top: 0; margin-bottom: 15px; text-align: center; font-size: 1.15rem;">
+        🧙‍♂️ Tus 3 Mejores Escenarios
+      </h3>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+  `;
+
+  ultimosEscenariosOraculo.forEach((esc, idx) => {
+     let medalla = idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉';
+     let diff = posRealActual - esc.posicionMia;
+     let textoSube = diff > 0 ? `<span style="color:#137333; font-weight:bold;">Subirías ${diff} pos.</span>` : diff < 0 ? `<span style="color:#d93025; font-weight:bold;">Bajarías ${Math.abs(diff)} pos.</span>` : `<span style="color:#666; font-weight:bold;">Mantenés puesto</span>`;
+     let colorEfi = idx === 0 ? '#137333' : idx === 1 ? '#f39c12' : '#d35400';
+
+     html += `
+       <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8f9fa; border: 1px solid #eee; border-radius: 8px; cursor:pointer; transition: all 0.2s;" onclick="dibujarTablaSimuladaDesdeOraculo(${idx})" onmouseover="this.style.borderColor='#8e44ad'" onmouseout="this.style.borderColor='#eee'">
+         <div style="display: flex; align-items: center; gap: 12px;">
+           <div style="font-size: 1.5rem;">${medalla}</div>
+           <div>
+             <div style="font-weight: 900; font-size: 1.2rem; color: #2c3e50;">${esc.rL} - ${esc.rV}</div>
+             <div style="font-size: 0.8rem; color: #555; margin-top: 2px;">
+               ${textoSube} | Sumás +${esc.ptsGanadosAca} pts
+             </div>
+           </div>
+         </div>
+         <div style="text-align: right;">
+           <div style="font-size: 0.75rem; color: #888; text-transform: uppercase; font-weight: bold;">Eficiencia</div>
+           <div style="font-size: 1.2rem; font-weight: 900; color: ${colorEfi};">${esc.eficiencia}%</div>
+         </div>
+       </div>
+     `;
+  });
+
+  html += `
+      </div>
+      <p style="text-align: center; font-size: 0.85rem; color: #8e44ad; font-weight: bold; margin-top: 15px; margin-bottom: 0;">
+        ⬇️ Tocá cualquiera de los 3 resultados para cargar su tabla ⬇️
+      </p>
+    </div>
+    <div id="oraculo-tabla-dinamica"></div>
+  `;
+
+  document.getElementById('simulador-table-container').innerHTML = html;
+  dibujarTablaSimuladaDesdeOraculo(0); // Por defecto dibujamos la primera opción
+}
+
+// 6. Dibuja la tabla cuando hacés clic en una de las 3 opciones
+function dibujarTablaSimuladaDesdeOraculo(index) {
+   let esc = ultimosEscenariosOraculo[index];
+   let div = document.getElementById('oraculo-tabla-dinamica');
+   if(div) div.innerHTML = generarHTMLTablaSimulada(esc.rankingGenerado, `Tabla si termina ${esc.rL} - ${esc.rV} (Eficiencia: ${esc.eficiencia}%)`);
+}
+
+// 7. Generador HTML de la tabla optimizado para celulares
+function generarHTMLTablaSimulada(rankingSimulado, titulo) {
+  let html = `
     <h3 style="margin: 30px 0 15px 0; text-align: center; color: #8e44ad; border-top: 2px dashed #e9ecef; padding-top: 25px;">
       📊 ${titulo}
     </h3>
     <div class="table-container">
-      <table class="standings-table">
+      <table class="standings-table" style="font-size: 0.8rem;">
         <thead>
           <tr>
-            <th style="width: 50px;">Pos</th>
-            <th style="text-align: left;">Jugador</th>
-            <th>Prode</th>
-            <th>Suma</th>
-            <th>Total Simulado</th>
+            <th style="width: 30px; padding: 8px 4px;">Pos</th>
+            <th style="text-align: left; padding: 8px 4px;">Jugador</th>
+            <th style="padding: 8px 4px;">Prode</th>
+            <th style="padding: 8px 4px;">Suma</th>
+            <th style="padding: 8px 4px;">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -1860,24 +1941,35 @@ function dibujarTablaSimulada(rankingSimulado, titulo, mensajeExtra = '') {
 
   rankingSimulado.forEach((row, index) => {
     let posSimulada = index + 1;
-    let medalla = posSimulada === 1 ? "🥇" : posSimulada === 2 ? "🥈" : posSimulada === 3 ? "🥉" : posSimulada;
+    let medalla = posSimulada;
+    if (posSimulada === 1) medalla = "🥇"; if (posSimulada === 2) medalla = "🥈"; if (posSimulada === 3) medalla = "🥉";
     let esSocio = currentUser && row.jugador.toLowerCase() === currentUser.username.toLowerCase() ? 'highlight-user' : '';
-    let badgePuntos = row.ptsGanadosAhora > 0 ? `<span style="background: #e6f4ea; color: #137333; padding: 4px 8px; border-radius: 4px; font-weight: 800;">+${row.ptsGanadosAhora}</span>` : `<span style="color: #bbb; font-weight: 600;">0</span>`;
+
+    let badgePuntos = row.ptsGanadosAhora > 0 
+      ? `<span style="background: #e6f4ea; color: #137333; padding: 2px 5px; border-radius: 4px; font-weight: 800; border: 1px solid #cce8d6;">+${row.ptsGanadosAhora}</span>` 
+      : `<span style="color: #bbb; font-weight: 600;">0</span>`;
 
     let posRealIndex = appData.ranking.findIndex(r => r.jugador === row.jugador);
-    let diff = (posRealIndex > -1 ? posRealIndex + 1 : posSimulada) - posSimulada; 
-    let badgeVariacion = diff > 0 ? `<span style="color:#137333; font-size:0.8rem; font-weight:800; margin-left:8px;">▲ ${diff}</span>` : diff < 0 ? `<span style="color:#d93025; font-size:0.8rem; font-weight:800; margin-left:8px;">▼ ${Math.abs(diff)}</span>` : `<span style="color:#999; font-size:0.8rem; font-weight:800; margin-left:8px;">➖</span>`;
+    let posRealActual = posRealIndex > -1 ? posRealIndex + 1 : posSimulada;
+    let diff = posRealActual - posSimulada; 
+    
+    // Pegamos la flecha un poco más al nombre (margin-left: 4px)
+    let badgeVariacion = '';
+    if (diff > 0) badgeVariacion = `<span style="color: #137333; font-size: 0.75rem; font-weight: 800; margin-left: 4px;">▲ ${diff}</span>`;
+    else if (diff < 0) badgeVariacion = `<span style="color: #d93025; font-size: 0.75rem; font-weight: 800; margin-left: 4px;">▼ ${Math.abs(diff)}</span>`;
+    else badgeVariacion = `<span style="color: #999; font-size: 0.75rem; font-weight: 800; margin-left: 4px;">➖</span>`;
 
     html += `
           <tr class="${esSocio}">
-            <td style="font-weight: 700;">${medalla}</td>
-            <td class="team-name">${row.jugador} ${badgeVariacion}</td>
-            <td style="font-weight: 700; color: #495057;">${row.pronosticoTexto}</td>
-            <td>${badgePuntos}</td>
-            <td class="col-pts" style="color: #8e44ad; font-size: 1rem;">${row.puntos} pts</td>
+            <td style="font-weight: 700; padding: 8px 4px;">${medalla}</td>
+            <td class="team-name" style="padding: 8px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px;">${row.jugador} ${badgeVariacion}</td>
+            <td style="font-weight: 700; color: #495057; padding: 8px 4px; letter-spacing: -0.5px;">${row.pronosticoTexto}</td>
+            <td style="padding: 8px 4px;">${badgePuntos}</td>
+            <td class="col-pts" style="color: #8e44ad; font-size: 0.9rem; padding: 8px 4px;">${row.puntos} pts</td>
           </tr>`;
   });
   html += `</tbody></table></div>`;
-  document.getElementById('simulador-table-container').innerHTML = html;
+  
+  return html;
 }
 

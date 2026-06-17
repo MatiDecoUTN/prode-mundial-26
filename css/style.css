@@ -139,8 +139,8 @@ body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #e8
 .clasificado { border-left: 4px solid #2ecc71; }
 .standings-table tr td.clasificado-tercero { background-color: #e8f0fe !important; color: #1a73e8 !important; font-weight: bold; }
 
-/* Excepción: Las tablas de Ranking y Resultados Extras no necesitan estirarse */
-#tab-ranking .standings-table, #tab-extras .standings-table { min-width: 100%; }
+/* Excepción: Las tablas de Ranking, Extras y Simulador no necesitan estirarse */
+#tab-ranking .standings-table, #tab-extras .standings-table, #tab-simulador .standings-table { min-width: 100%; }
 
 .user-prediction-badge { margin-top: 10px; padding-top: 8px; border-top: 1px dashed #eee; font-size: 0.85rem; color: #555; text-align: center; }
 .user-prediction-badge.missing { color: #d93025; background: #fce8e6; border-radius: 4px; padding: 4px; border-top: none; }
