@@ -2102,36 +2102,35 @@ function generarHTMLTablaSimulada(rankingSimulado, titulo) {
 
 // Función auxiliar para calcular el tiempo absoluto de un partido y poder ordenarlos
 function getTiempoAbsolutoPartido(p) {
-  // 1. Extraemos la hora exactamente con tu misma lógica
   let hora = "00:00";
+
+  // 1. EXTRAER LA HORA (A PRUEBA DE BALAS)
+  // Escaneamos el texto buscando algo con formato HH:MM (ej: "16:00" o "09:30")
+  // No importa si hay 1, 2 o 10 espacios antes.
   if (p.info) {
-    const partesInfo = p.info.split(/ {2,}/);
-    if (partesInfo[1]) {
-      hora = partesInfo[1].trim();
+    const matchHora = p.info.match(/\b\d{1,2}:\d{2}\b/);
+    if (matchHora) {
+      hora = matchHora[0]; 
     }
   }
 
-  // 2. Parseamos la fecha. Asumimos el formato DD/MM/YYYY clásico que devuelve Sheets acá.
-  // Lo convertimos a formato ISO (YYYY-MM-DDTHH:MM) para que no falle en celulares.
+  // 2. PARSEAR LA FECHA (Formato D/M/YYYY de Sheets)
   let partesFecha = p.fecha ? p.fecha.split("/") : [];
   if (partesFecha.length === 3) {
     let dia = partesFecha[0].padStart(2, '0');
     let mes = partesFecha[1].padStart(2, '0');
     let anio = partesFecha[2];
     
-    // Si el año viene en dos dígitos (ej: 26 en vez de 2026), lo arreglamos
+    // Si el año viene en dos dígitos (ej: 26), lo arreglamos
     if (anio.length === 2) anio = "20" + anio;
 
-    let isoString = `${anio}-${mes}-${dia}T${hora}:00`;
+    // Armamos un texto que cualquier celular o compu entiende a la perfección
+    let isoString = `${anio}-${mes}-${dia}T${hora.padStart(5, '0')}:00`;
     return new Date(isoString).getTime();
   }
 
-  // Fallback por si la fecha tiene un formato rarísimo:
-  let fallbackDate = new Date(`${p.fecha} ${hora}`);
-  if (!isNaN(fallbackDate.getTime())) return fallbackDate.getTime();
-
-  // Si todo falla (ej: fecha vacía), usamos el ID como último recurso para no romper la app
-  return p.id;
+  // Fallback de seguridad (Lo manda al final para no romper nada)
+  return 9999999999999 + p.id; 
 }
 
 // 🧮 Calculadora Exprés de Eficiencia para el Simulador Manual
