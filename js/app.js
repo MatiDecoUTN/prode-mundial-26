@@ -618,13 +618,46 @@ function renderResultadosOficiales() {
     groupContentContainer.appendChild(divTabla);
   }
 
-  // --- 2. DIBUJAMOS LAS ELIMINATORIAS ---
-  rondasFase2.forEach(ronda => {
+  // --- 2. DIBUJAMOS LAS ELIMINATORIAS (CON ACORDEONES) ---
+  rondasFase2.forEach((ronda, index) => {
     const partidosRonda = appData.partidos.filter(p => p.id >= ronda.min && p.id <= ronda.max);
     if (partidosRonda.length === 0) return;
-    const title = document.createElement('h3'); title.className = 'group-title'; title.style.backgroundColor = "#8e44ad"; title.innerText = ronda.nombre;
-    contElims.appendChild(title);
+
+    // Determinamos si el acordeón arranca abierto (por ejemplo, el último elemento de la lista, que suele ser la Final)
+    const isOpen = (index === rondasFase2.length - 1) ? 'open' : '';
+
+    // Creamos el contenedor del acordeón
+    const detailsDiv = document.createElement('details');
+    detailsDiv.className = 'grupo-acordeon';
+    if (isOpen) detailsDiv.setAttribute('open', '');
+    detailsDiv.style.background = 'white';
+    detailsDiv.style.border = '1px solid #dcdde1';
+    detailsDiv.style.borderRadius = '8px';
+    detailsDiv.style.overflow = 'hidden';
+    detailsDiv.style.marginBottom = '15px';
+
+    // Creamos el título clickeable del acordeón
+    const summary = document.createElement('summary');
+    summary.style.background = '#8e44ad';
+    summary.style.padding = '15px';
+    summary.style.fontWeight = '800';
+    summary.style.color = 'white';
+    summary.style.cursor = 'pointer';
+    summary.style.display = 'flex';
+    summary.style.justifyContent = 'space-between';
+    summary.style.alignItems = 'center';
+    summary.style.listStyle = 'none';
+    summary.innerHTML = `${ronda.nombre} <span style="font-size: 0.8rem; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 12px;">${partidosRonda.length} Partidos</span>`;
     
+    detailsDiv.appendChild(summary);
+
+    // Creamos el contenedor interno donde van a ir las tarjetas de los partidos
+    const cardContainer = document.createElement('div');
+    cardContainer.style.padding = '15px';
+    cardContainer.style.display = 'flex';
+    cardContainer.style.flexDirection = 'column';
+    cardContainer.style.gap = '15px';
+
     partidosRonda.forEach(p => {
       let ptsGanados = 0; let tieneProde = appData.misPronosticos[p.id];
       if (p.golesL !== null && p.golesV !== null && tieneProde) { ptsGanados = calcularPuntosEnFrente(tieneProde.gL, tieneProde.gV, p.golesL, p.golesV); puntosTotalesJugador += ptsGanados; }
@@ -677,8 +710,11 @@ function renderResultadosOficiales() {
           ${htmlOthers}
         </div>
       `;
-      contElims.appendChild(card);
+      cardContainer.appendChild(card);
     });
+
+    detailsDiv.appendChild(cardContainer);
+    contElims.appendChild(detailsDiv);
   });
   document.getElementById('prode-pts-badge').innerText = `🏆 Mis Puntos: ${puntosTotalesJugador} pts`;
 }
