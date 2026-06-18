@@ -853,6 +853,7 @@ function renderRankingGeneral() {
         'matideco': { tipo: 'video', url: './videos/fracaso.mp4' },
         'debutante': { tipo: 'video', url: './videos/exito.mp4' },
         'mudo': { tipo: 'imagen', url: './fotos/lobo.jpg' },
+        'thomas shelby': { tipo: 'imagen', url: './fotos/tomi.jpg' },
         // 'sebasartori': { tipo: 'imagen', url: './img/cara_triste.png' } // <- Ejemplo de cómo agregar una imagen
     };
 
@@ -1823,14 +1824,28 @@ function seleccionarPartidoSimulador(id) {
 }
 
 // 3. Botón Manual clásico
+// 3. Botón Manual clásico
 function ejecutarSimulacion() {
   const matchId = parseInt(document.getElementById('sim-partido-select').value);
   const simGL = document.getElementById('sim-gL').value;
   const simGV = document.getElementById('sim-gV').value;
   if(simGL === "" || simGV === "") return alert("Ingresá goles.");
   
-  let rankingSim = simularRankingFicticio(matchId, parseInt(simGL), parseInt(simGV));
-  document.getElementById('simulador-table-container').innerHTML = generarHTMLTablaSimulada(rankingSim, `Tabla si termina ${simGL} - ${simGV}`);
+  let l = parseInt(simGL);
+  let v = parseInt(simGV);
+
+  // Llamamos a nuestra nueva calculadora exprés
+  let eficiencia = obtenerEficienciaParaSimulador(matchId, l, v);
+  
+  // Le damos un colorcito dependiendo de qué tan bueno sea el resultado
+  let colorEfi = eficiencia >= 90 ? '#137333' : eficiencia >= 70 ? '#f39c12' : '#d93025';
+
+  let rankingSim = simularRankingFicticio(matchId, l, v);
+  
+  // Lo inyectamos directamente en el título de la tabla
+  let tituloTabla = `Tabla si termina ${l} - ${v} <br><span style="font-size: 0.9rem; color: ${colorEfi};">(Eficiencia para vos: ${eficiencia}%)</span>`;
+  
+  document.getElementById('simulador-table-container').innerHTML = generarHTMLTablaSimulada(rankingSim, tituloTabla);
 }
 
 // 4. EL ORÁCULO MATEMÁTICO 8.0 (EXPLICACIÓN POR DESCARTE Y DIFERENCIAL)
@@ -2117,4 +2132,58 @@ function getTiempoAbsolutoPartido(p) {
 
   // Si todo falla (ej: fecha vacía), usamos el ID como último recurso para no romper la app
   return p.id;
+}
+
+// 🧮 Calculadora Exprés de Eficiencia para el Simulador Manual
+function obtenerEficienciaParaSimulador(matchId, simL, simV) {
+   const topeL = Math.max(5, simL + 2);
+   const topeV = Math.max(5, simV + 2);
+   let miPosRealActual = appData.ranking.findIndex(r => r.jugador.toLowerCase() === currentUser.username.toLowerCase()) + 1;
+   
+   let todosLosScores = [];
+   let scoreDelSimulado = 0;
+
+   // Simulamos todos los universos posibles igual que el oráculo
+   for (let l = 0; l <= topeL; l++) {
+      for (let v = 0; v <= topeV; v++) {
+         let rankingPrueba = simularRankingFicticio(matchId, l, v);
+         let miIndex = rankingPrueba.findIndex(r => r.jugador.toLowerCase() === currentUser.username.toLowerCase());
+         let miFila = rankingPrueba[miIndex];
+         let miPosicion = miIndex + 1;
+
+         let score = 0;
+         score += (miFila.ptsGanadosAhora * 2000);
+         score += ((miPosRealActual - miPosicion) * 3000);
+
+         let scoreDiferencial = 0;
+         rankingPrueba.forEach((r) => {
+            if (r.jugador.toLowerCase() === currentUser.username.toLowerCase()) return;
+            let posRivalInicial = appData.ranking.findIndex(x => x.jugador === r.jugador) + 1;
+            let diffPuntos = miFila.ptsGanadosAhora - r.ptsGanadosAhora;
+            let distanciaTabla = Math.abs(miPosRealActual - posRivalInicial);
+
+            let pesoVector = 40;
+            if (distanciaTabla === 1) pesoVector = 200;
+            else if (distanciaTabla <= 3) pesoVector = 120;
+            else if (distanciaTabla <= 6) pesoVector = 70;
+            if (posRivalInicial <= 3) pesoVector += 80;
+
+            scoreDiferencial += (diffPuntos * pesoVector);
+         });
+         score += scoreDiferencial;
+         score -= ((l + v) * 20);
+
+         todosLosScores.push(score);
+         
+         // Si este universo es exactamente el que el usuario tipeó, guardamos su puntaje
+         if (l === simL && v === simV) scoreDelSimulado = score;
+      }
+   }
+
+   let maxScoreGlobal = Math.max(...todosLosScores);
+   let minScoreGlobal = Math.min(...todosLosScores);
+   let rangoGlobal = maxScoreGlobal - minScoreGlobal || 1;
+
+   let efi = ((scoreDelSimulado - minScoreGlobal) / rangoGlobal) * 100;
+   return parseFloat(efi.toFixed(2));
 }
