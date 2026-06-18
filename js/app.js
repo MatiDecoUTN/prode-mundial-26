@@ -840,19 +840,31 @@ function renderRankingGeneral() {
        }
     }
 
-    // ==========================================
-    // 🎬 LÓGICA REVISADA: VIDEOS SIN BORDES
+  // ==========================================
+    // 🎬 LÓGICA ESCALABLE: MULTIMEDIA DE JUGADORES
     // ==========================================
     let videoMeme = '';
     let nombreLower = row.jugador.toLowerCase();
 
-    // El video de la desgracia para MatiDeco
-    if (nombreLower === 'matideco') {
-        videoMeme = `<video src="./videos/fracaso.mp4" autoplay loop muted playsinline style="width: 45px; height: 45px; border-radius: 50%; margin-left: 12px; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.15);"></video>`;
-    } 
-    // El video del éxito para Debutante
-    else if (nombreLower === 'debutante') {
-        videoMeme = `<video src="./videos/exito.mp4" autoplay loop muted playsinline style="width: 45px; height: 45px; border-radius: 50%; margin-left: 12px; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.15);"></video>`;
+    // 📌 DICCIONARIO DE MEMES: 
+    // Para agregar a alguien, solo sumá una línea acá.
+    // 'tipo' puede ser 'video' o 'imagen'.
+    const mediaJugadores = {
+        'matideco': { tipo: 'video', url: './videos/fracaso.mp4' },
+        'debutante': { tipo: 'video', url: './videos/exito.mp4' },
+        'mudo': { tipo: 'imagen', url: './fotos/lobo.jpg' },
+        // 'sebasartori': { tipo: 'imagen', url: './img/cara_triste.png' } // <- Ejemplo de cómo agregar una imagen
+    };
+
+    let mediaObj = mediaJugadores[nombreLower];
+    if (mediaObj) {
+        let mediaStyle = "width: 45px; height: 45px; border-radius: 50%; margin-left: 12px; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.15);";
+        
+        if (mediaObj.tipo === 'video') {
+            videoMeme = `<video src="${mediaObj.url}" autoplay loop muted playsinline style="${mediaStyle}"></video>`;
+        } else if (mediaObj.tipo === 'imagen') {
+            videoMeme = `<img src="${mediaObj.url}" style="${mediaStyle}" alt="Meme">`;
+        }
     }
     // ==========================================
 
