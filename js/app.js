@@ -131,43 +131,51 @@ const rondasFase2 = [
   { id: 'final', nombre: "Tercer Puesto y Final", min: 103, max: 104 }
 ];
 
-// Reemplazá tu función fetchAppDatos por esta:
 async function fetchAppDatos() {
   const loading = document.getElementById('loading-overlay');
   loading.classList.remove('hidden');
   try {
-    // ... dentro de fetchAppDatos() ...
     const data = await apiCall('getDatos', { username: currentUser.username });
     appData.partidos = data.partidos;
     appData.misPronosticos = data.misPronosticos || {};
     appData.ranking = data.ranking || []; 
     appData.fases = data.fases || {};
-    appData.jugadores = data.jugadores || []; // <-- AGREGAMOS ESTA LÍNEA
+    appData.jugadores = data.jugadores || []; 
     appData.pronosticosOtros = data.pronosticosOtros || {};
-    // Dentro del try de fetchAppDatos(), abajo de appData.pronosticosOtros = ...
     appData.misExtras = data.misExtras || {};
     appData.extrasComunidad = data.extrasComunidad || [];
     appData.resultadosExtras = data.resultadosExtras || {};
     
+    // =======================================================
+    // 📸 ACÁ SACAMOS LA FOTO (Justo después de cargar todo)
+    // =======================================================
+    fotoPartidosOriginal = JSON.stringify(appData.partidos);
+    // =======================================================
+
     if (currentUser.rol === 'admin') {
       document.getElementById('screen-admin').classList.add('active');
       renderAdminResultados();
-      renderAdminJugadores(); // <-- AGREGAMOS ESTA FUNCIÓN
+      renderAdminJugadores(); 
       
       ['grupos', 'f16', 'f8', 'f4', 'semi', 'final'].forEach(f => {
         document.getElementById(`toggle-${f}`).checked = appData.fases[f];
         document.getElementById(`label-${f}`).innerText = appData.fases[f] ? "Abierta" : "Cerrada";
       });
     } else {
-      // Lógica de usuario común...
       document.getElementById('screen-app').classList.add('active');
       document.getElementById('nav-username').innerText = currentUser.username;
-      renderMisPronosticos(); renderResultadosOficiales(); renderRankingGeneral();
-      renderPremiosRandom(); // <-- Sumar esta línea
+      renderMisPronosticos(); 
+      renderResultadosOficiales(); 
+      renderRankingGeneral();
+      renderPremiosRandom(); 
       renderSimuladorInit();
       iniciarContadorRegresivo();
     }
-  } catch (err) { alert("Error: " + err.message); } finally { loading.classList.add('hidden'); }
+  } catch (err) { 
+    alert("Error: " + err.message); 
+  } finally { 
+    loading.classList.add('hidden'); 
+  }
 }
 // NUEVO DICCIONARIO: Ahora usamos los códigos ISO oficiales de 2 letras
 const banderas = {
@@ -2187,3 +2195,55 @@ function obtenerEficienciaParaSimulador(matchId, simL, simV) {
    let efi = ((scoreDelSimulado - minScoreGlobal) / rangoGlobal) * 100;
    return parseFloat(efi.toFixed(2));
 }
+// =========================================================
+// 🔄 AUTO-REFRESH INTELIGENTE: DETECCIÓN DE CAMBIOS Y VERSIÓN
+// =========================================================
+
+// 1. CONTROL DE VERSIÓN DEL CÓDIGO
+// Cambiá este número (ej: "1.0.1") cuando modifiques HTML/CSS/JS y quieras forzar actualización.
+const APP_VERSION = "1.0.0"; 
+
+let versionGuardada = localStorage.getItem("prodeAppVersion");
+if (versionGuardada !== APP_VERSION) {
+    console.log("🔄 Nueva versión de la app detectada. Recargando para limpiar caché...");
+    localStorage.setItem("prodeAppVersion", APP_VERSION);
+    window.location.reload(true);
+}
+
+// 2. VARIABLES GLOBALES PARA LA DETECCIÓN SILENCIOSA
+let fotoPartidosOriginal = null; // Se llena dentro de fetchAppDatos()
+let chequeandoCambios = false;
+
+// 3. EL "DESPERTADOR" DE LA PESTAÑA
+document.addEventListener('visibilitychange', async () => {
+  // Solo accionamos cuando el usuario VUELVE a mirar la pestaña y ya está logueado
+  if (document.visibilityState === 'visible' && typeof currentUser !== 'undefined' && currentUser) {
+    
+    // Candado de seguridad por si el usuario cambia de pestaña súper rápido
+    if (chequeandoCambios) return;
+    chequeandoCambios = true;
+    
+    console.log("👀 Pestaña activa. Preguntando al servidor si hay goles nuevos...");
+    
+    try {
+      const newData = await apiCall('getDatos', { username: currentUser.username });
+      
+      if (newData && newData.partidos) {
+        let fotoNuevosPartidos = JSON.stringify(newData.partidos);
+        
+        // Verificamos si la foto que sacamos al inicio es distinta a la que llegó recién
+        if (fotoPartidosOriginal && fotoNuevosPartidos !== fotoPartidosOriginal) {
+            console.log("⚠️ ¡Nuevos resultados detectados en la base de datos! Actualizando pantalla...");
+            window.location.reload(); 
+        } else {
+            console.log("✅ Todo está al día. No hacemos nada.");
+        }
+      }
+    } catch (error) {
+      console.error("🚨 Error al buscar cambios en segundo plano:", error);
+    } finally {
+      // Liberamos el candado
+      chequeandoCambios = false;
+    }
+  }
+});
