@@ -684,7 +684,8 @@ function renderResultadosOficiales() {
 }
 
 
-// Variable global para recordar si el usuario prendió las flechitas
+
+// Función que calcula qué puesto tenía cada uno antes del último partido jugado
 window.mostrarVariacionRanking = false; 
 
 function actualizarToggleVariacion(isChecked) {
@@ -694,7 +695,11 @@ function actualizarToggleVariacion(isChecked) {
 
 // Función que calcula qué puesto tenía cada uno antes del último partido jugado
 function getVariacionPosiciones() {
-   const partidosJugados = appData.partidos.filter(p => p.golesL !== null && p.golesV !== null).sort((a, b) => a.id - b.id);
+   // 🌟 ACÁ ESTÁ EL ÚNICO CAMBIO: Usamos el traductor solo para ordenar
+   const partidosJugados = appData.partidos
+      .filter(p => p.golesL !== null && p.golesV !== null)
+      .sort((a, b) => getTiempoAbsolutoPartido(a) - getTiempoAbsolutoPartido(b));
+      
    let variaciones = {};
    let usuarios = appData.jugadores.filter(j => j.rol !== 'admin').map(j => j.usuario);
 
@@ -741,7 +746,6 @@ function getVariacionPosiciones() {
 
    return variaciones;
 }
-    
 
 // TAB: Ranking General (La tabla de posiciones de tus amigos)
 function renderRankingGeneral() {
@@ -1469,9 +1473,10 @@ let rankingChartInstance = null; // Guardamos la instancia para destruirla si se
 function renderGraficoEvolucion() {
   const ctx = document.getElementById('rankingChart').getContext('2d');
   
+  // 🌟 FIX CRONOLÓGICO REAL: Reemplazamos 'a.id - b.id' por nuestro traductor de fecha y hora
   const partidosJugados = appData.partidos
     .filter(p => p.golesL !== null && p.golesV !== null)
-    .sort((a, b) => a.id - b.id);
+    .sort((a, b) => getTiempoAbsolutoPartido(a) - getTiempoAbsolutoPartido(b));
 
   if (partidosJugados.length === 0) return; 
 
@@ -1483,6 +1488,7 @@ function renderGraficoEvolucion() {
 
   // Máquina del tiempo
   partidosJugados.forEach((p) => {
+    // Al estar ordenados por fecha, las etiquetas del eje X van a seguir la línea de tiempo real
     labelsX.push(`P${p.id}`); 
 
     usuarios.forEach(u => {
@@ -1550,11 +1556,10 @@ function renderGraficoEvolucion() {
       scales: {
         y: {
           reverse: true, 
-          min: 0.5, // 1. TRUCO DEL TECHO: Empuja el #1 hacia abajo para que no se corte
+          min: 0.5, 
           max: usuarios.length + 0.5,
           ticks: { 
             stepSize: 1, 
-            // 2. Ocultamos el '0.5' y mostramos solo enteros limpios
             callback: function(value) {
               if (value % 1 === 0) return value;
             }
@@ -1568,7 +1573,6 @@ function renderGraficoEvolucion() {
             usePointStyle: true, 
             boxWidth: 8,
             padding: 15,
-            // 3. ELIMINAMOS EL TACHADO: Engañamos a Chart.js y pintamos de gris manualmente
             generateLabels: function(chart) {
               return chart.data.datasets.map((dataset, i) => {
                 const isHidden = !chart.isDatasetVisible(i);
@@ -1577,14 +1581,13 @@ function renderGraficoEvolucion() {
                   fillStyle: isHidden ? 'transparent' : dataset.borderColor,
                   strokeStyle: isHidden ? '#ccc' : dataset.borderColor,
                   lineWidth: 2,
-                  hidden: false, // Magia: Le decimos que NO está oculto para que no lo tache
+                  hidden: false, 
                   datasetIndex: i,
-                  fontColor: isHidden ? '#b0b0b0' : '#333' // Letra gris clarita
+                  fontColor: isHidden ? '#b0b0b0' : '#333' 
                 };
               });
             }
           },
-          // Como engañamos al motor arriba, tenemos que reimplementar el clic:
           onClick: function(e, legendItem, legend) {
             const index = legendItem.datasetIndex;
             const ci = legend.chart;
@@ -1610,10 +1613,8 @@ function renderGraficoEvolucion() {
               let medalla = pos === 1 ? '🥇 ' : pos === 2 ? '🥈 ' : pos === 3 ? '🥉 ' : '';
               return `${medalla}#${pos} - ${user}: ${pts} pts`;
             },
-            // 4. MÁQUINA DEL TIEMPO: El super-agregado para saber qué pasaba en ese momento
             afterBody: function(context) {
               let matchIndex = context[0].dataIndex;
-              // Calculamos cómo estaba TODO el ranking en ese partido específico
               let snapshot = usuarios.map(u => ({
                 u: u,
                 pos: historial[u].posiciones[matchIndex],
@@ -1621,7 +1622,6 @@ function renderGraficoEvolucion() {
               }));
               snapshot.sort((a, b) => a.pos - b.pos);
               
-              // Lo inyectamos al final del cuadrito negro del tooltip
               let lines = ['', '--- LÍDERES EN ESTE MOMENTO ---'];
               snapshot.slice(0, 3).forEach(s => {
                 let m = s.pos === 1 ? '🥇' : s.pos === 2 ? '🥈' : '🥉';
@@ -2037,3 +2037,36 @@ function generarHTMLTablaSimulada(rankingSimulado, titulo) {
   return html;
 }
 
+// Función auxiliar para calcular el tiempo absoluto de un partido y poder ordenarlos
+function getTiempoAbsolutoPartido(p) {
+  // 1. Extraemos la hora exactamente con tu misma lógica
+  let hora = "00:00";
+  if (p.info) {
+    const partesInfo = p.info.split(/ {2,}/);
+    if (partesInfo[1]) {
+      hora = partesInfo[1].trim();
+    }
+  }
+
+  // 2. Parseamos la fecha. Asumimos el formato DD/MM/YYYY clásico que devuelve Sheets acá.
+  // Lo convertimos a formato ISO (YYYY-MM-DDTHH:MM) para que no falle en celulares.
+  let partesFecha = p.fecha ? p.fecha.split("/") : [];
+  if (partesFecha.length === 3) {
+    let dia = partesFecha[0].padStart(2, '0');
+    let mes = partesFecha[1].padStart(2, '0');
+    let anio = partesFecha[2];
+    
+    // Si el año viene en dos dígitos (ej: 26 en vez de 2026), lo arreglamos
+    if (anio.length === 2) anio = "20" + anio;
+
+    let isoString = `${anio}-${mes}-${dia}T${hora}:00`;
+    return new Date(isoString).getTime();
+  }
+
+  // Fallback por si la fecha tiene un formato rarísimo:
+  let fallbackDate = new Date(`${p.fecha} ${hora}`);
+  if (!isNaN(fallbackDate.getTime())) return fallbackDate.getTime();
+
+  // Si todo falla (ej: fecha vacía), usamos el ID como último recurso para no romper la app
+  return p.id;
+}
