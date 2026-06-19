@@ -883,8 +883,10 @@ function renderRankingGeneral() {
             <td style="font-weight: 700; vertical-align: middle;">${medalla}</td>
             
             <td class="team-name" style="vertical-align: middle;">
-              <div style="display: flex; align-items: center;">
-                ${row.jugador} ${badgeVariacion} ${videoMeme}
+              <div style="display: flex; align-items: center; gap: 5px;">
+                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 28vw;">${row.jugador}</span>
+                <span style="flex-shrink: 0; display: flex; align-items: center;">${badgeVariacion}</span> 
+                <div style="flex-shrink: 0;">${videoMeme}</div>
               </div>
             </td>
             
@@ -2098,7 +2100,14 @@ function generarHTMLTablaSimulada(rankingSimulado, titulo) {
     html += `
           <tr class="${esSocio}">
             <td style="font-weight: 700; padding: 8px 4px;">${medalla}</td>
-            <td class="team-name" style="padding: 8px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px;">${row.jugador} ${badgeVariacion}</td>
+            
+            <td class="team-name" style="padding: 8px 4px;">
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 25vw;">${row.jugador}</span>
+                <span style="flex-shrink: 0;">${badgeVariacion}</span>
+              </div>
+            </td>
+            
             <td style="font-weight: 700; color: #495057; padding: 8px 4px; letter-spacing: -0.5px;">${row.pronosticoTexto}</td>
             <td style="padding: 8px 4px;">${badgePuntos}</td>
             <td class="col-pts" style="color: #8e44ad; font-size: 0.9rem; padding: 8px 4px;">${row.puntos} pts</td>
