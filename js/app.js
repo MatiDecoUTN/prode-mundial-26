@@ -860,9 +860,10 @@ function renderRankingGeneral() {
     const mediaJugadores = {
         'matideco': { tipo: 'video', url: './videos/fracaso.mp4' },
         'debutante': { tipo: 'video', url: './videos/exito.mp4' },
-        'mudo': { tipo: 'imagen', url: './fotos/lobo.jpg' },
+        'mudopolacogustavo': { tipo: 'imagen', url: './fotos/lobo.jpg' },
         'thomas shelby': { tipo: 'imagen', url: './fotos/tomi.jpg' },
         'caturra': { tipo: 'video', url: './videos/cata.mp4' },
+        'rengo': { tipo: 'imagen', url: './fotos/rengo.jpg' },
         // 'sebasartori': { tipo: 'imagen', url: './img/cara_triste.png' } // <- Ejemplo de cómo agregar una imagen
     };
 
