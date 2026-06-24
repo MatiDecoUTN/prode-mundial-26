@@ -738,8 +738,8 @@ function actualizarToggleVariacion(isChecked) {
 }
 
 // Función que calcula qué puesto tenía cada uno antes del último partido jugado
+// Función que calcula qué puesto tenía cada uno antes del último bloque de partidos jugados
 function getVariacionPosiciones() {
-   // 🌟 ACÁ ESTÁ EL ÚNICO CAMBIO: Usamos el traductor solo para ordenar
    const partidosJugados = appData.partidos
       .filter(p => p.golesL !== null && p.golesV !== null)
       .sort((a, b) => getTiempoAbsolutoPartido(a) - getTiempoAbsolutoPartido(b));
@@ -747,8 +747,21 @@ function getVariacionPosiciones() {
    let variaciones = {};
    let usuarios = appData.jugadores.filter(j => j.rol !== 'admin').map(j => j.usuario);
 
-   // Si hay 1 o 0 partidos jugados, no hay variación posible todavía
-   if (partidosJugados.length <= 1) {
+   // Si no hay partidos, no hay variación
+   if (partidosJugados.length === 0) {
+      usuarios.forEach(u => variaciones[u] = 0);
+      return variaciones;
+   }
+
+   // 🕒 EL FIX: Averiguamos la hora exacta del último partido cargado
+   const ultimoTiempo = getTiempoAbsolutoPartido(partidosJugados[partidosJugados.length - 1]);
+   
+   // Nos quedamos SOLO con los partidos que terminaron antes de esa hora
+   // (Si se jugaron 2 juntos a las 22:00, esto los excluye a ambos)
+   const partidosPrevios = partidosJugados.filter(p => getTiempoAbsolutoPartido(p) < ultimoTiempo);
+
+   // Si justo estamos en el primer horario del torneo y todos los partidos tienen la misma hora
+   if (partidosPrevios.length === 0) {
       usuarios.forEach(u => variaciones[u] = 0);
       return variaciones;
    }
@@ -756,9 +769,8 @@ function getVariacionPosiciones() {
    let ptsPrevios = {};
    usuarios.forEach(u => ptsPrevios[u] = { pts: 0, exactos: 0 });
 
-   // Calculamos el torneo frenando UN PARTIDO ANTES del final (length - 1)
-   for(let i = 0; i < partidosJugados.length - 1; i++) {
-      let p = partidosJugados[i];
+   // Calculamos el torneo frenando en esa "foto previa"
+   partidosPrevios.forEach(p => {
       usuarios.forEach(u => {
          let uLower = u.toLowerCase();
          let op = null;
@@ -773,7 +785,7 @@ function getVariacionPosiciones() {
             if (pts === 7) ptsPrevios[u].exactos += 1;
          }
       });
-   }
+   });
 
    // Foto de las posiciones en el pasado
    let snapshotPrevio = usuarios.map(u => ({ usuario: u, pts: ptsPrevios[u].pts, exactos: ptsPrevios[u].exactos }));
@@ -785,7 +797,7 @@ function getVariacionPosiciones() {
    appData.ranking.forEach((row, idx) => {
        let posActual = idx + 1;
        let posPrevia = posicionesPrevias[row.jugador] || posActual;
-       variaciones[row.jugador] = posPrevia - posActual; // Ej: Si antes era 5° y ahora 3° -> 5 - 3 = +2 (Subió)
+       variaciones[row.jugador] = posPrevia - posActual; 
    });
 
    return variaciones;
