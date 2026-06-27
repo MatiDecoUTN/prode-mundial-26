@@ -249,6 +249,7 @@ function renderMisPronosticos() {
   const contGrupos = document.getElementById('sub-prode-grupos');
   const contElims = document.getElementById('sub-prode-elims');
 
+  // --- 1. DIBUJAMOS LA FASE DE GRUPOS ---
   for (let i = 0; i < 12; i++) {
     const letraGrupo = String.fromCharCode(65 + i);
     const partidosGrupo = appData.partidos.filter(p => p.id > (i * 6) && p.id <= ((i + 1) * 6));
@@ -273,26 +274,61 @@ function renderMisPronosticos() {
     const tableDiv = document.createElement('div'); tableDiv.id = `tabla-grupo-${letraGrupo}`; contGrupos.appendChild(tableDiv);
   }
 
+  // --- 2. DIBUJAMOS LAS ELIMINATORIAS (CON ACORDEONES CERRADOS Y BANDERAS) ---
   rondasFase2.forEach(ronda => {
     const partidosRonda = appData.partidos.filter(p => p.id >= ronda.min && p.id <= ronda.max);
     if (partidosRonda.length === 0) return; 
-    const title = document.createElement('h3'); title.className = 'group-title'; title.style.backgroundColor = "#8e44ad"; title.innerText = ronda.nombre;
-    contElims.appendChild(title);
+    
+    // Creamos el contenedor del acordeón (sin 'open' para que arranque cerrado)
+    const detailsDiv = document.createElement('details');
+    detailsDiv.className = 'grupo-acordeon';
+    detailsDiv.style.background = 'white';
+    detailsDiv.style.border = '1px solid #dcdde1';
+    detailsDiv.style.borderRadius = '8px';
+    detailsDiv.style.overflow = 'hidden';
+    detailsDiv.style.marginBottom = '15px';
+
+    // Creamos el título clickeable del acordeón
+    const summary = document.createElement('summary');
+    summary.style.background = '#34495e'; // Azul oscuro para diferenciarlo de resultados
+    summary.style.padding = '15px';
+    summary.style.fontWeight = '800';
+    summary.style.color = 'white';
+    summary.style.cursor = 'pointer';
+    summary.style.display = 'flex';
+    summary.style.justifyContent = 'space-between';
+    summary.style.alignItems = 'center';
+    summary.style.listStyle = 'none';
+    summary.innerHTML = `${ronda.nombre} <span style="font-size: 0.8rem; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 12px;">${partidosRonda.length} Partidos</span>`;
+    
+    detailsDiv.appendChild(summary);
+
+    // Contenedor interno para las tarjetas
+    const cardContainer = document.createElement('div');
+    cardContainer.style.padding = '15px';
+    cardContainer.style.display = 'flex';
+    cardContainer.style.flexDirection = 'column';
+    cardContainer.style.gap = '15px';
+
     partidosRonda.forEach(p => {
       const card = document.createElement('div'); card.className = 'match-card';
+      // Acá agregamos la lógica de banderas que te faltaba
       card.innerHTML = `
         <div class="match-header">${generarEncabezadoPartido(p)}</div>
         <div class="match-body">
-          <div class="team local">${p.local}</div>
+          <div class="team local">${p.local} <span class="flag">${getBandera(p.local)}</span></div>
           <div class="score-inputs">
             <input type="number" min="0" class="inp-score" id="gL_${p.id}" value="${appData.misPronosticos[p.id] ? appData.misPronosticos[p.id].gL : ''}" ${!appData.fases[ronda.id] ? 'disabled' : ''}>
             <span class="vs">VS</span>
             <input type="number" min="0" class="inp-score" id="gV_${p.id}" value="${appData.misPronosticos[p.id] ? appData.misPronosticos[p.id].gV : ''}" ${!appData.fases[ronda.id] ? 'disabled' : ''}>
           </div>
-          <div class="team visitante">${p.visitante}</div>
+          <div class="team visitante"><span class="flag">${getBandera(p.visitante)}</span> ${p.visitante}</div>
         </div>`;
-      contElims.appendChild(card);
+      cardContainer.appendChild(card);
     });
+
+    detailsDiv.appendChild(cardContainer);
+    contElims.appendChild(detailsDiv);
   });
 
   const btnContainer = document.getElementById('btn-save-container');
