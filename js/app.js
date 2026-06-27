@@ -147,6 +147,11 @@ async function fetchAppDatos() {
     appData.resultadosExtras = data.resultadosExtras || {};
     
     // =======================================================
+    // ⚙️ ACTIVAMOS EL MOTOR DE ELIMINATORIAS
+    procesarCuadroAutomatico();
+    // =======================================================
+
+    // =======================================================
     // 📸 ACÁ SACAMOS LA FOTO (Justo después de cargar todo)
     // =======================================================
     fotoPartidosOriginal = JSON.stringify(appData.partidos);
@@ -2269,3 +2274,74 @@ document.addEventListener('visibilitychange', async () => {
     }
   }
 });
+
+// =========================================================
+// ⚙️ MOTOR DE AVANCE DEL CUADRO ELIMINATORIO
+// =========================================================
+function procesarCuadroAutomatico() {
+  // 1. EL MAPA DE CRUCES EXACTO DEL MUNDIAL 2026
+  // Formato: idPartidoDestino: { localVieneDe: ID, visVieneDe: ID, perdedores: false }
+  const mapaCruces = {
+    // 🏆 OCTAVOS (Vienen de los 16avos)
+    89: { localVieneDe: 74, visVieneDe: 77 },
+    90: { localVieneDe: 73, visVieneDe: 75 },
+    91: { localVieneDe: 76, visVieneDe: 78 },
+    92: { localVieneDe: 79, visVieneDe: 80 },
+    93: { localVieneDe: 83, visVieneDe: 84 },
+    94: { localVieneDe: 81, visVieneDe: 82 },
+    95: { localVieneDe: 86, visVieneDe: 88 }, 
+    96: { localVieneDe: 85, visVieneDe: 87 },
+    // 🔥 CUARTOS
+    97: { localVieneDe: 89, visVieneDe: 90 },
+    98: { localVieneDe: 93, visVieneDe: 94 },
+    99: { localVieneDe: 91, visVieneDe: 92 },
+    100: { localVieneDe: 95, visVieneDe: 96 },
+    // ⚔️ SEMIFINALES
+    101: { localVieneDe: 97, visVieneDe: 98 },
+    102: { localVieneDe: 99, visVieneDe: 100 },
+    // 🥉 TERCER PUESTO (Acá van los que PERDIERON las semis)
+    103: { localVieneDe: 101, visVieneDe: 102, perdedores: true },
+    // 👑 LA GRAN FINAL
+    104: { localVieneDe: 101, visVieneDe: 102 }
+  };
+
+  // 2. EL JUEZ: Define quién avanzó
+  function obtenerAvanzado(idPartido, buscarPerdedor = false) {
+    let p = appData.partidos.find(x => x.id === idPartido);
+    
+    // Si el partido todavía no se jugó, devolvemos el texto genérico
+    if (!p || p.golesL === null || p.golesV === null) {
+        return buscarPerdedor ? `Perdedor ${idPartido}` : `Ganador ${idPartido}`;
+    }
+    
+    // Si alguien ganó en los 120 minutos
+    if (p.golesL > p.golesV) return buscarPerdedor ? p.visitante : p.local;
+    if (p.golesV > p.golesL) return buscarPerdedor ? p.local : p.visitante;
+    
+    // EMPATE: Buscamos en la nueva columna de penales
+    if (p.golesL === p.golesV) {
+        if (p.ganadorPenales) {
+            // Verificamos quién es el que ganó por penales
+            let ganoLocal = p.ganadorPenales.toLowerCase() === p.local.toLowerCase();
+            if (buscarPerdedor) return ganoLocal ? p.visitante : p.local;
+            return ganoLocal ? p.local : p.visitante;
+        } else {
+            // Si empataron y todavía no cargaste quién ganó los penales en Sheets
+            return `A def. por penales (${idPartido})`;
+        }
+    }
+  }
+
+  // 3. ACTUALIZACIÓN EN MEMORIA
+  Object.keys(mapaCruces).forEach(idDestino => {
+     let partidoDestino = appData.partidos.find(p => p.id == idDestino);
+     if (partidoDestino) {
+         let infoCruce = mapaCruces[idDestino];
+         let buscarPerdedores = infoCruce.perdedores === true;
+
+         // Reemplazamos los textos temporales por los nombres reales de los países
+         partidoDestino.local = obtenerAvanzado(infoCruce.localVieneDe, buscarPerdedores);
+         partidoDestino.visitante = obtenerAvanzado(infoCruce.visVieneDe, buscarPerdedores);
+     }
+  });
+}
