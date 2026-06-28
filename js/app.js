@@ -2381,3 +2381,30 @@ function procesarCuadroAutomatico() {
      }
   });
 }
+
+// js/app.js (Pegar al final)
+function toggleAdminMenu() {
+  let menu = document.getElementById('admin-menu-tabs');
+  
+  // Si el menú existe y está visible, lo ocultamos
+  if (menu && menu.style.display === 'flex') {
+    menu.style.display = 'none';
+    return;
+  }
+
+  // Si existe pero está oculto, lo mostramos
+  if (menu) {
+    menu.style.display = 'flex';
+    menu.style.flexDirection = 'column';
+    menu.style.position = 'absolute';
+    menu.style.top = '60px';
+    menu.style.left = '0';
+    menu.style.width = '100%';
+    menu.style.background = '#1c2833';
+    menu.style.zIndex = '9999';
+    menu.style.padding = '0';
+  } else {
+    // Si NO existe (porque falta el ID en el HTML), le avisamos al Admin
+    alert("Error de navegación: El menú de admin no tiene el ID 'admin-menu-tabs' en el archivo index.html");
+  }
+}
