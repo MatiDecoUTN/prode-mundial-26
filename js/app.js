@@ -258,29 +258,17 @@ function renderMisPronosticos() {
     contGrupos.appendChild(title);
     partidosGrupo.forEach(p => {
       const card = document.createElement('div'); card.className = 'match-card';
-      // ... dentro del bucle de partidos (forEach de partidosRonda)
-const card = document.createElement('div');
-card.className = 'match-card match-card-v2'; // Agregamos la clase nueva
-
-card.innerHTML = `
-    <div class="match-header">${generarEncabezadoPartido(p)}</div>
-    <div class="match-body match-body-v2">
-      <div class="team local team-v2">
-        <span>${p.local}</span>
-        <span class="flag">${getBandera(p.local)}</span>
-      </div>
-      
-      <div class="score-inputs score-inputs-v2">
-        <input type="number" min="0" class="inp-score" id="gL_${p.id}" value="${appData.misPronosticos[p.id] ? appData.misPronosticos[p.id].gL : ''}" ${!appData.fases[ronda.id] ? 'disabled' : ''}>
-        <span class="vs">VS</span>
-        <input type="number" min="0" class="inp-score" id="gV_${p.id}" value="${appData.misPronosticos[p.id] ? appData.misPronosticos[p.id].gV : ''}" ${!appData.fases[ronda.id] ? 'disabled' : ''}>
-      </div>
-      
-      <div class="team visitante team-v2">
-        <span class="flag">${getBandera(p.visitante)}</span>
-        <span>${p.visitante}</span>
-      </div>
-    </div>`;
+      card.innerHTML = `
+        <div class="match-header">${generarEncabezadoPartido(p)}</div>
+        <div class="match-body">
+          <div class="team local">${p.local} <span class="flag">${getBandera(p.local)}</span></div>
+          <div class="score-inputs">
+            <input type="number" min="0" class="inp-score" id="gL_${p.id}" value="${appData.misPronosticos[p.id] ? appData.misPronosticos[p.id].gL : ''}" oninput="actualizarTablas()" ${!appData.fases.grupos ? 'disabled' : ''}>
+            <span class="vs">VS</span>
+            <input type="number" min="0" class="inp-score" id="gV_${p.id}" value="${appData.misPronosticos[p.id] ? appData.misPronosticos[p.id].gV : ''}" oninput="actualizarTablas()" ${!appData.fases.grupos ? 'disabled' : ''}>
+          </div>
+          <div class="team visitante"><span class="flag">${getBandera(p.visitante)}</span> ${p.visitante}</div>
+        </div>`;
       contGrupos.appendChild(card);
     });
     const tableDiv = document.createElement('div'); tableDiv.id = `tabla-grupo-${letraGrupo}`; contGrupos.appendChild(tableDiv);
@@ -317,9 +305,7 @@ card.innerHTML = `
 
     // Contenedor interno para las tarjetas
     const cardContainer = document.createElement('div');
-    // Le dejamos 15px arriba/abajo, pero lo bajamos a 4px a los costados
-    cardContainer.style.padding = '15px 4px'; 
-    cardContainer.style.boxSizing = 'border-box'; // Obliga a respetar los bordes
+    cardContainer.style.padding = '15px';
     cardContainer.style.display = 'flex';
     cardContainer.style.flexDirection = 'column';
     cardContainer.style.gap = '15px';
@@ -2395,17 +2381,3 @@ function procesarCuadroAutomatico() {
      }
   });
 }
-// Abre y cierra el menú hamburguesa del Admin
-function toggleAdminMenu() {
-  const adminMenu = document.getElementById('admin-menu-tabs');
-  // Usamos 'active' o 'show' dependiendo de cómo lo tengas en tu CSS. 
-  // Generalmente en menús responsive es 'active'.
-  adminMenu.classList.toggle('active'); 
-}
-
-
-
-
-
-
-
