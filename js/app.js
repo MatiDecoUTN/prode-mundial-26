@@ -2383,3 +2383,17 @@ function procesarCuadroAutomatico() {
      }
   });
 }
+// Abre y cierra el menú hamburguesa del Admin
+function toggleAdminMenu() {
+  const adminMenu = document.getElementById('admin-menu-tabs');
+  // Usamos 'active' o 'show' dependiendo de cómo lo tengas en tu CSS. 
+  // Generalmente en menús responsive es 'active'.
+  adminMenu.classList.toggle('active'); 
+}
+
+
+
+
+
+
+
