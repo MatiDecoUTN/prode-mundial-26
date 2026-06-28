@@ -231,95 +231,54 @@ body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #e8
 
 
 
-/* Prevenir que las tarjetas desborden la pantalla en contenedores con padding */
-.match-card {
-    box-sizing: border-box;
-    width: 100%;
-    max-width: 100%;
-}
-
-/* Destrabar flexbox para que los textos largos puedan acomodarse hacia abajo */
-.team {
-    min-width: 0;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-}
-
-/* Compactar el área de goles */
-.score-inputs {
-    display: flex;
-    align-items: center;
-    gap: 4px; /* Achicamos la separación */
-}
-
-.inp-score {
-    width: 35px !important; /* Achicamos el ancho del input */
-    height: 35px !important;
-    padding: 0 !important;
-    text-align: center;
-    font-size: 0.9rem !important;
-}
-
-.vs {
-    font-size: 0.7rem !important; /* Achicamos el VS */
-    font-weight: bold;
-    color: #999;
-}
-
-
-.match-body {
-    display: grid !important;
-    grid-template-columns: 1fr auto 1fr; /* 1 parte nombre izq, auto centro, 1 parte nombre der */
-    align-items: center;
-    gap: 5px;
-    padding: 10px 5px;
-}
-
-/* Forzar que las banderas no se estiren */
-.flag {
-    width: 20px;
-    height: 15px;
-    flex-shrink: 0;
-}
-
-.team.visitante {
-    text-align: left;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    word-break: break-word; /* Si es muy largo, que baje de línea */
-}
-
-/* 1. Usamos Flexbox vertical para el equipo si es móvil */
 @media (max-width: 768px) {
+    /* 1. La tarjeta ocupa el 100% con un padding mínimo */
+    .match-card {
+        padding: 10px 5px !important;
+    }
+
+    /* 2. Cuerpo del partido en una fila apretada pero eficiente */
     .match-body {
         display: flex !important;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 2px !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 2px !important;
     }
 
-    .score-inputs {
-        order: 1; /* Los goles van al medio */
-        margin: 5px 0;
-    }
-
-    .team.local, .team.visitante {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
+    /* 3. El nombre del equipo y bandera juntos, con ancho limitado */
+    .team {
+        display: flex !important;
+        flex-direction: column !important; /* Nombre arriba, bandera abajo */
+        align-items: center !important;
+        width: 35% !important; /* Cada equipo ocupa un 35% */
+        font-size: 0.75rem !important; /* Texto un poco más chico */
+        line-height: 1.1 !important;
         text-align: center;
-        font-size: 0.85rem !important; /* Un poquito más chico */
-        word-break: keep-all; /* No romper palabras */
-        white-space: nowrap; /* Que no se corten los nombres */
+        overflow: hidden;
     }
 
-    /* Las banderas más chiquitas para que no molesten */
+    /* 4. Achicamos la caja de los goles para que no domine la pantalla */
+    .score-inputs {
+        width: 30% !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        gap: 2px !important;
+    }
+
+    .inp-score {
+        width: 30px !important;
+        height: 30px !important;
+        font-size: 0.8rem !important;
+    }
+
+    /* 5. VS casi invisible para ahorrar espacio */
+    .vs { font-size: 0.6rem !important; color: #ccc; }
+
+    /* 6. Bandera diminuta debajo del nombre */
     .flag {
-        width: 16px !important;
+        width: 18px !important;
         height: 12px !important;
-        margin: 0 4px;
+        margin-top: 2px !important;
     }
 }
