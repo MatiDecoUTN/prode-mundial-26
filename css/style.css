@@ -232,53 +232,36 @@ body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #e8
 
 
 @media (max-width: 768px) {
-    /* 1. La tarjeta ocupa el 100% con un padding mínimo */
-    .match-card {
-        padding: 10px 5px !important;
+    /* Contenedor específico para tarjetas móviles */
+    .match-card-v2 {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        padding: 8px !important;
     }
 
-    /* 2. Cuerpo del partido en una fila apretada pero eficiente */
-    .match-body {
+    .match-body-v2 {
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
-        gap: 2px !important;
+        gap: 5px !important;
     }
 
-    /* 3. El nombre del equipo y bandera juntos, con ancho limitado */
-    .team {
+    .team-v2 {
         display: flex !important;
-        flex-direction: column !important; /* Nombre arriba, bandera abajo */
+        flex-direction: column !important;
         align-items: center !important;
-        width: 35% !important; /* Cada equipo ocupa un 35% */
-        font-size: 0.75rem !important; /* Texto un poco más chico */
-        line-height: 1.1 !important;
+        width: 35% !important;
+        font-size: 0.75rem !important;
         text-align: center;
-        overflow: hidden;
+        white-space: normal !important; /* Permite que el nombre baje si es necesario */
+        word-wrap: break-word !important;
     }
 
-    /* 4. Achicamos la caja de los goles para que no domine la pantalla */
-    .score-inputs {
+    .score-inputs-v2 {
         width: 30% !important;
         display: flex !important;
         justify-content: center !important;
         align-items: center !important;
-        gap: 2px !important;
-    }
-
-    .inp-score {
-        width: 30px !important;
-        height: 30px !important;
-        font-size: 0.8rem !important;
-    }
-
-    /* 5. VS casi invisible para ahorrar espacio */
-    .vs { font-size: 0.6rem !important; color: #ccc; }
-
-    /* 6. Bandera diminuta debajo del nombre */
-    .flag {
-        width: 18px !important;
-        height: 12px !important;
-        margin-top: 2px !important;
     }
 }
