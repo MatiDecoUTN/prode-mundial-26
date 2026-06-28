@@ -305,7 +305,9 @@ function renderMisPronosticos() {
 
     // Contenedor interno para las tarjetas
     const cardContainer = document.createElement('div');
-    cardContainer.style.padding = '15px';
+    // Le dejamos 15px arriba/abajo, pero lo bajamos a 4px a los costados
+    cardContainer.style.padding = '15px 4px'; 
+    cardContainer.style.boxSizing = 'border-box'; // Obliga a respetar los bordes
     cardContainer.style.display = 'flex';
     cardContainer.style.flexDirection = 'column';
     cardContainer.style.gap = '15px';

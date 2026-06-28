@@ -227,3 +227,18 @@ body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #e8
    --------------------------------------------------- */
 .countdown-popup { position: fixed; top: 75px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 12px 40px 12px 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 2000; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
 .countdown-popup .close-popup-btn { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); background: none; border: none; font-size: 1.4rem; color: #856404; cursor: pointer; line-height: 1; }
+
+
+/* Prevenir que las tarjetas desborden la pantalla en contenedores con padding */
+.match-card {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Destrabar flexbox para que los textos largos puedan acomodarse hacia abajo */
+.team {
+    min-width: 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
