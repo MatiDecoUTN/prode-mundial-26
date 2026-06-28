@@ -395,17 +395,22 @@
 <!-- ADMIN PANEL (solo visible para admin) -->
 <div id="screen-admin" class="screen">
   <nav class="navbar admin-nav">
+    <button class="hamburger-btn" onclick="toggleAdminMenu()">☰</button>
+    
     <div class="nav-brand">⚙️ Admin Panel</div>
-    <div class="nav-tabs">
+    
+    <div class="nav-tabs" id="admin-menu-tabs">
       <button class="nav-tab active" data-tab="atab-resultados" onclick="showAdminTab('atab-resultados',this)">Cargar Resultados</button>
       <button class="nav-tab" data-tab="atab-jugadores" onclick="showAdminTab('atab-jugadores',this)">Jugadores</button>
       <button class="nav-tab" data-tab="atab-fase" onclick="showAdminTab('atab-fase',this)">Control de Fases</button>
     </div>
+    
     <div class="nav-user">
       <span class="nav-username-text">ADMIN</span>
       <button class="btn-logout" onclick="logout()">Salir</button>
     </div>
   </nav>
+
   <main class="main-content">
     <div id="atab-resultados" class="tab-content active">
       <div class="tab-header"><h2>⚽ Cargar Resultados</h2></div>
