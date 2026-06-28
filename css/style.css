@@ -267,12 +267,38 @@ body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #e8
 }
 
 
-.match-body {
-    display: grid !important;
-    grid-template-columns: 1fr auto 1fr; /* 1 parte nombre izq, auto centro, 1 parte nombre der */
-    align-items: center;
-    gap: 5px;
-    padding: 10px 5px;
+/* 1. Usamos Flexbox vertical para el equipo si es móvil */
+@media (max-width: 768px) {
+    .match-body {
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 2px !important;
+    }
+
+    .score-inputs {
+        order: 1; /* Los goles van al medio */
+        margin: 5px 0;
+    }
+
+    .team.local, .team.visitante {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        text-align: center;
+        font-size: 0.85rem !important; /* Un poquito más chico */
+        word-break: keep-all; /* No romper palabras */
+        white-space: nowrap; /* Que no se corten los nombres */
+    }
+
+    /* Las banderas más chiquitas para que no molesten */
+    .flag {
+        width: 16px !important;
+        height: 12px !important;
+        margin: 0 4px;
+    }
 }
 
 /* Forzar que las banderas no se estiren */
