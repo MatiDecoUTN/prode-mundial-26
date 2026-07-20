@@ -2,6 +2,18 @@
 
 let currentUser = null;
 
+// Escapa texto que viene de usuarios (ej: Premios Random) antes de inyectarlo en el DOM,
+// para evitar que un pronóstico con HTML/JS se ejecute en el navegador de otros jugadores.
+function escapeHtml(valor) {
+  if (valor === null || valor === undefined) return '';
+  return String(valor)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 async function handleLogin() {
   const userInp = document.getElementById('inp-user').value.trim();
   const passInp = document.getElementById('inp-pass').value.trim();
@@ -22,10 +34,12 @@ async function handleLogin() {
     // Llamada al backend
     const userData = await apiCall('login', { username: userInp, password: passInp });
     
-    currentUser = userData; 
-    
-    // NUEVO: Guardamos la sesión en el almacenamiento local del navegador
-    localStorage.setItem('prode_sesion', JSON.stringify(currentUser));
+    currentUser = userData;
+
+    // Guardamos la sesión en el almacenamiento local del navegador.
+    // Solo persistimos lo estrictamente necesario para no dejar en el navegador
+    // ningún campo sensible (ej. password) que el backend pueda incluir en userData.
+    localStorage.setItem('prode_sesion', JSON.stringify({ username: currentUser.username, rol: currentUser.rol }));
     
     document.getElementById('screen-login').classList.remove('active');
     
@@ -78,20 +92,23 @@ window.onload = function() {
 
 // js/app.js (al final del archivo)
 
-function showTab(tabId, btnElement) {
-  // 1. Ocultamos todos los contenidos de las pestañas
-  document.querySelectorAll('.tab-content').forEach(tab => {
+// Lógica común para cambiar de pestaña: oculta el contenido/botones activos
+// dentro de "scope" y activa el tabId/botón clickeado. showTab y showAdminTab
+// solo difieren en el scope (toda la página vs. el panel de admin) y en si
+// además hay que cerrar el menú hamburguesa mobile.
+function cambiarTab(scope, tabId, btnElement) {
+  scope.querySelectorAll('.tab-content').forEach(tab => {
     tab.classList.remove('active');
   });
-  
-  // 2. Desmarcamos todos los botones del menú
-  document.querySelectorAll('.nav-tab').forEach(btn => {
+  scope.querySelectorAll('.nav-tab').forEach(btn => {
     btn.classList.remove('active');
   });
-  
-  // 3. Activamos solo la pestaña y el botón que clickeamos
   document.getElementById(tabId).classList.add('active');
   btnElement.classList.add('active');
+}
+
+function showTab(tabId, btnElement) {
+  cambiarTab(document, tabId, btnElement);
   // Cerramos el menú dropdown si está abierto en el celular
   const menu = document.getElementById('menu-tabs');
   if (menu && menu.classList.contains('open')) {
@@ -102,21 +119,7 @@ function showTab(tabId, btnElement) {
 // js/app.js (agregalo al final)
 
 function showAdminTab(tabId, btnElement) {
-  // 1. Buscamos y ocultamos solo las pestañas dentro del panel de admin
-  const adminScreen = document.getElementById('screen-admin');
-  
-  adminScreen.querySelectorAll('.tab-content').forEach(tab => {
-    tab.classList.remove('active');
-  });
-  
-  // 2. Desmarcamos los botones del menú de admin
-  adminScreen.querySelectorAll('.nav-tab').forEach(btn => {
-    btn.classList.remove('active');
-  });
-  
-  // 3. Activamos la pestaña y el botón clickeado
-  document.getElementById(tabId).classList.add('active');
-  btnElement.classList.add('active');
+  cambiarTab(document.getElementById('screen-admin'), tabId, btnElement);
 }
 
 
@@ -130,6 +133,26 @@ const rondasFase2 = [
   { id: 'semi', nombre: "Semifinales", min: 101, max: 102 },
   { id: 'final', nombre: "Tercer Puesto y Final", min: 103, max: 104 }
 ];
+
+const NUM_GRUPOS = 12;
+const PARTIDOS_POR_GRUPO = 6;
+
+// Fuente única de verdad para "qué partidos son de cada grupo de la fase de grupos".
+// Usada por todas las pantallas que dibujan la fase de grupos (prode, admin, resultados, perfil, tabla de terceros).
+function obtenerGruposConPartidos() {
+  const grupos = [];
+  for (let i = 0; i < NUM_GRUPOS; i++) {
+    const letra = String.fromCharCode(65 + i);
+    const partidos = appData.partidos.filter(p => p.id > (i * PARTIDOS_POR_GRUPO) && p.id <= ((i + 1) * PARTIDOS_POR_GRUPO));
+    if (partidos.length > 0) grupos.push({ letra, partidos });
+  }
+  return grupos;
+}
+
+// Fuente única de verdad para "qué partidos son de una ronda eliminatoria" (rondasFase2).
+function obtenerPartidosDeRonda(ronda) {
+  return appData.partidos.filter(p => p.id >= ronda.min && p.id <= ronda.max);
+}
 
 async function fetchAppDatos() {
   const loading = document.getElementById('loading-overlay');
@@ -250,10 +273,7 @@ function renderMisPronosticos() {
   const contElims = document.getElementById('sub-prode-elims');
 
   // --- 1. DIBUJAMOS LA FASE DE GRUPOS ---
-  for (let i = 0; i < 12; i++) {
-    const letraGrupo = String.fromCharCode(65 + i);
-    const partidosGrupo = appData.partidos.filter(p => p.id > (i * 6) && p.id <= ((i + 1) * 6));
-    if (partidosGrupo.length === 0) continue;
+  obtenerGruposConPartidos().forEach(({ letra: letraGrupo, partidos: partidosGrupo }) => {
     const title = document.createElement('h3'); title.className = 'group-title'; title.innerText = `Grupo ${letraGrupo}`;
     contGrupos.appendChild(title);
     partidosGrupo.forEach(p => {
@@ -272,11 +292,11 @@ function renderMisPronosticos() {
       contGrupos.appendChild(card);
     });
     const tableDiv = document.createElement('div'); tableDiv.id = `tabla-grupo-${letraGrupo}`; contGrupos.appendChild(tableDiv);
-  }
+  });
 
   // --- 2. DIBUJAMOS LAS ELIMINATORIAS (CON ACORDEONES CERRADOS Y BANDERAS) ---
   rondasFase2.forEach(ronda => {
-    const partidosRonda = appData.partidos.filter(p => p.id >= ronda.min && p.id <= ronda.max);
+    const partidosRonda = obtenerPartidosDeRonda(ronda);
     if (partidosRonda.length === 0) return; 
     
     // Creamos el contenedor del acordeón (sin 'open' para que arranque cerrado)
@@ -346,11 +366,7 @@ function renderMisPronosticos() {
 
 // NUEVA FUNCIÓN: Calcula y dibuja las tablas en tiempo real
 function actualizarTablas() {
-  for (let i = 0; i < 12; i++) {
-    const letraGrupo = String.fromCharCode(65 + i);
-    const partidosGrupo = appData.partidos.filter(p => p.id > (i * 6) && p.id <= ((i + 1) * 6));
-    if (partidosGrupo.length === 0) continue;
-
+  obtenerGruposConPartidos().forEach(({ letra: letraGrupo, partidos: partidosGrupo }) => {
     let stats = {};
     partidosGrupo.forEach(p => {
       if (p.local && !stats[p.local]) stats[p.local] = { nombre: p.local, pts: 0, pj: 0, g: 0, e: 0, p: 0, gf: 0, gc: 0, df: 0 };
@@ -425,7 +441,7 @@ function actualizarTablas() {
     // Inyectamos el HTML en el div correspondiente
     const divTabla = document.getElementById(`tabla-grupo-${letraGrupo}`);
     if (divTabla) divTabla.innerHTML = html;
-  }
+  });
 }
 
 function renderAdminResultados() {
@@ -433,11 +449,7 @@ function renderAdminResultados() {
   container.innerHTML = ''; 
   
   // 1. DIBUJAMOS GRUPOS PARA EL ADMIN
-  for (let i = 0; i < 12; i++) {
-    const letraGrupo = String.fromCharCode(65 + i);
-    const partidosGrupo = appData.partidos.filter(p => p.id > (i * 6) && p.id <= ((i + 1) * 6));
-    if (partidosGrupo.length === 0) continue;
-
+  obtenerGruposConPartidos().forEach(({ letra: letraGrupo, partidos: partidosGrupo }) => {
     const title = document.createElement('h3');
     title.className = 'group-title';
     title.innerText = `Grupo ${letraGrupo}`;
@@ -460,11 +472,11 @@ function renderAdminResultados() {
       `;
       container.appendChild(card);
     });
-  }
+  });
 
   // 2. DIBUJAMOS ELIMINATORIAS PARA EL ADMIN
   rondasFase2.forEach(ronda => {
-    const partidosRonda = appData.partidos.filter(p => p.id >= ronda.min && p.id <= ronda.max);
+    const partidosRonda = obtenerPartidosDeRonda(ronda);
     if (partidosRonda.length === 0) return;
 
     const title = document.createElement('h3');
@@ -552,6 +564,69 @@ async function savePronosticos() {
   }
 }
 
+// Arma la tarjeta de un partido para la pestaña "Resultados" (usada tanto por
+// la fase de grupos como por las eliminatorias, que antes duplicaban este bloque entero).
+function construirTarjetaResultado(p) {
+  let ptsGanados = 0;
+  let tieneProde = appData.misPronosticos[p.id];
+  if (p.golesL !== null && p.golesV !== null && tieneProde) {
+    ptsGanados = calcularPuntosEnFrente(tieneProde.gL, tieneProde.gV, p.golesL, p.golesV);
+  }
+
+  const card = document.createElement('div');
+  card.className = `match-card ${p.golesL !== null ? 'partido-jugado' : ''}`;
+
+  let htmlOthers = '';
+  if (appData.fases[getFaseKeyDePartidoFrontend(p.id)] === false) {
+     let chipsOthers = appData.jugadores
+          .filter(j => j.rol !== 'admin' && j.usuario.toLowerCase() !== currentUser.username.toLowerCase())
+          .map(j => {
+            let op = appData.pronosticosOtros[p.id] ? appData.pronosticosOtros[p.id].find(o => o.jugador.toLowerCase() === j.usuario.toLowerCase()) : null;
+            if (op) {
+              return `<div class="other-user-chip"><span class="other-name">${j.usuario}:</span> <span class="other-score">${op.gL}-${op.gV}</span></div>`;
+            } else {
+              return `<div class="other-user-chip missing"><span class="other-name">${j.usuario}:</span> <span class="other-score">Sin cargar</span></div>`;
+            }
+        }).join('');
+
+     htmlOthers = `
+        <button onclick="togglePronosticos(this, ${p.id})" style="background: #f1f3f4; border: none; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: #555; cursor: pointer; margin-top: 5px; width: 100%; transition: background 0.2s;">
+          👀 Ver pronósticos del grupo ⬇️
+        </button>
+        <div id="others-match-${p.id}" class="others-box hidden" style="margin-top: 8px;">
+          <div class="others-grid">
+            ${chipsOthers}
+          </div>
+        </div>
+     `;
+  }
+
+  card.innerHTML = `
+    <div class="match-header">${generarEncabezadoPartido(p)}</div>
+    <div class="match-body">
+      <div class="team local">${p.local} <span class="flag">${getBandera(p.local)}</span></div>
+      <div class="score-display">
+        <span class="score-num">${p.golesL !== null ? p.golesL : '-'}</span>
+        <span class="vs">:</span>
+        <span class="score-num">${p.golesV !== null ? p.golesV : '-'}</span>
+      </div>
+      <div class="team visitante"><span class="flag">${getBandera(p.visitante)}</span> ${p.visitante}</div>
+    </div>
+
+    <div class="prediction-row-container" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #eee;">
+      ${tieneProde ? `
+        <div style="font-size: 0.85rem; color: #555; text-align: center;">
+          Tu prode: <strong>${tieneProde.gL}-${tieneProde.gV}</strong> | <span style="color: ${ptsGanados > 0 ? '#137333' : '#666'}; font-weight: 700;">+${ptsGanados} pts</span>
+        </div>
+      ` : `<div class="user-prediction-badge missing">No cargaste pronóstico</div>`}
+
+      ${htmlOthers}
+    </div>
+  `;
+
+  return { card, ptsGanados };
+}
+
 function renderResultadosOficiales() {
   const container = document.getElementById('resultados-container');
   container.innerHTML = `
@@ -567,11 +642,7 @@ function renderResultadosOficiales() {
   let puntosTotalesJugador = 0;
 
   // --- 1. DIBUJAMOS LA FASE DE GRUPOS COLAPSABLE ---
-  for (let i = 0; i < 12; i++) {
-    const letraGrupo = String.fromCharCode(65 + i);
-    const partidosGrupo = appData.partidos.filter(p => p.id > (i * 6) && p.id <= ((i + 1) * 6));
-    if (partidosGrupo.length === 0) continue;
-
+  obtenerGruposConPartidos().forEach(({ letra: letraGrupo, partidos: partidosGrupo }) => {
     // Obtenemos los equipos únicos de este grupo para listarlos en el botón
     let equiposGrupo = [];
     partidosGrupo.forEach(p => {
@@ -602,74 +673,20 @@ function renderResultadosOficiales() {
 
     // Inyectamos los partidos adentro del bloque del grupo
     partidosGrupo.forEach(p => {
-      let ptsGanados = 0; let tieneProde = appData.misPronosticos[p.id];
-      if (p.golesL !== null && p.golesV !== null && tieneProde) { 
-        ptsGanados = calcularPuntosEnFrente(tieneProde.gL, tieneProde.gV, p.golesL, p.golesV); 
-        puntosTotalesJugador += ptsGanados; 
-      }
-      
-      const card = document.createElement('div'); 
-      card.className = `match-card ${p.golesL !== null ? 'partido-jugado' : ''}`;
-      
-      let htmlOthers = '';
-      if (appData.fases[getFaseKeyDePartidoFrontend(p.id)] === false) {
-         let chipsOthers = appData.jugadores
-              .filter(j => j.rol !== 'admin' && j.usuario.toLowerCase() !== currentUser.username.toLowerCase())
-              .map(j => {
-                let op = appData.pronosticosOtros[p.id] ? appData.pronosticosOtros[p.id].find(o => o.jugador.toLowerCase() === j.usuario.toLowerCase()) : null;
-                if (op) {
-                  return `<div class="other-user-chip"><span class="other-name">${j.usuario}:</span> <span class="other-score">${op.gL}-${op.gV}</span></div>`;
-                } else {
-                  return `<div class="other-user-chip missing"><span class="other-name">${j.usuario}:</span> <span class="other-score">Sin cargar</span></div>`;
-                }
-            }).join('');
-            
-         htmlOthers = `
-            <button onclick="togglePronosticos(this, ${p.id})" style="background: #f1f3f4; border: none; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: #555; cursor: pointer; margin-top: 5px; width: 100%; transition: background 0.2s;">
-              👀 Ver pronósticos del grupo ⬇️
-            </button>
-            <div id="others-match-${p.id}" class="others-box hidden" style="margin-top: 8px;">
-              <div class="others-grid">
-                ${chipsOthers}
-              </div>
-            </div>
-         `;
-      }
-
-      card.innerHTML = `
-        <div class="match-header">${generarEncabezadoPartido(p)}</div>
-        <div class="match-body">
-          <div class="team local">${p.local} <span class="flag">${getBandera(p.local)}</span></div>
-          <div class="score-display">
-            <span class="score-num">${p.golesL !== null ? p.golesL : '-'}</span>
-            <span class="vs">:</span>
-            <span class="score-num">${p.golesV !== null ? p.golesV : '-'}</span>
-          </div>
-          <div class="team visitante"><span class="flag">${getBandera(p.visitante)}</span> ${p.visitante}</div>
-        </div>
-        
-        <div class="prediction-row-container" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #eee;">
-          ${tieneProde ? `
-            <div style="font-size: 0.85rem; color: #555; text-align: center;">
-              Tu prode: <strong>${tieneProde.gL}-${tieneProde.gV}</strong> | <span style="color: ${ptsGanados > 0 ? '#137333' : '#666'}; font-weight: 700;">+${ptsGanados} pts</span>
-            </div>
-          ` : `<div class="user-prediction-badge missing">No cargaste pronóstico</div>`}
-          
-          ${htmlOthers}
-        </div>
-      `;
+      const { card, ptsGanados } = construirTarjetaResultado(p);
+      puntosTotalesJugador += ptsGanados;
       groupContentContainer.appendChild(card);
     });
 
     // Inyectamos la tabla de posiciones real abajo de los partidos del grupo
-    const divTabla = document.createElement('div'); 
-    divTabla.innerHTML = generarTablaRealHTML(partidosGrupo); 
+    const divTabla = document.createElement('div');
+    divTabla.innerHTML = generarTablaRealHTML(partidosGrupo);
     groupContentContainer.appendChild(divTabla);
-  }
+  });
 
   // --- 2. DIBUJAMOS LAS ELIMINATORIAS (CON ACORDEONES) ---
   rondasFase2.forEach((ronda, index) => {
-    const partidosRonda = appData.partidos.filter(p => p.id >= ronda.min && p.id <= ronda.max);
+    const partidosRonda = obtenerPartidosDeRonda(ronda);
     if (partidosRonda.length === 0) return;
 
     // Determinamos si el acordeón arranca abierto (por ejemplo, el último elemento de la lista, que suele ser la Final)
@@ -708,57 +725,8 @@ function renderResultadosOficiales() {
     cardContainer.style.gap = '15px';
 
     partidosRonda.forEach(p => {
-      let ptsGanados = 0; let tieneProde = appData.misPronosticos[p.id];
-      if (p.golesL !== null && p.golesV !== null && tieneProde) { ptsGanados = calcularPuntosEnFrente(tieneProde.gL, tieneProde.gV, p.golesL, p.golesV); puntosTotalesJugador += ptsGanados; }
-      const card = document.createElement('div'); card.className = `match-card ${p.golesL !== null ? 'partido-jugado' : ''}`;
-      
-      let htmlOthers = '';
-      if (appData.fases[getFaseKeyDePartidoFrontend(p.id)] === false) {
-         let chipsOthers = appData.jugadores
-              .filter(j => j.rol !== 'admin' && j.usuario.toLowerCase() !== currentUser.username.toLowerCase())
-              .map(j => {
-                let op = appData.pronosticosOtros[p.id] ? appData.pronosticosOtros[p.id].find(o => o.jugador.toLowerCase() === j.usuario.toLowerCase()) : null;
-                if (op) {
-                  return `<div class="other-user-chip"><span class="other-name">${j.usuario}:</span> <span class="other-score">${op.gL}-${op.gV}</span></div>`;
-                } else {
-                  return `<div class="other-user-chip missing"><span class="other-name">${j.usuario}:</span> <span class="other-score">Sin cargar</span></div>`;
-                }
-            }).join('');
-            
-         htmlOthers = `
-            <button onclick="togglePronosticos(this, ${p.id})" style="background: #f1f3f4; border: none; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: #555; cursor: pointer; margin-top: 5px; width: 100%; transition: background 0.2s;">
-              👀 Ver pronósticos del grupo ⬇️
-            </button>
-            <div id="others-match-${p.id}" class="others-box hidden" style="margin-top: 8px;">
-              <div class="others-grid">
-                ${chipsOthers}
-              </div>
-            </div>
-         `;
-      }
-
-      card.innerHTML = `
-        <div class="match-header">${generarEncabezadoPartido(p)}</div>
-        <div class="match-body">
-          <div class="team local">${p.local} <span class="flag">${getBandera(p.local)}</span></div>
-          <div class="score-display">
-            <span class="score-num">${p.golesL !== null ? p.golesL : '-'}</span>
-            <span class="vs">:</span>
-            <span class="score-num">${p.golesV !== null ? p.golesV : '-'}</span>
-          </div>
-          <div class="team visitante"><span class="flag">${getBandera(p.visitante)}</span> ${p.visitante}</div>
-        </div>
-        
-        <div class="prediction-row-container" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #eee;">
-          ${tieneProde ? `
-            <div style="font-size: 0.85rem; color: #555; text-align: center;">
-              Tu prode: <strong>${tieneProde.gL}-${tieneProde.gV}</strong> | <span style="color: ${ptsGanados > 0 ? '#137333' : '#666'}; font-weight: 700;">+${ptsGanados} pts</span>
-            </div>
-          ` : `<div class="user-prediction-badge missing">No cargaste pronóstico</div>`}
-          
-          ${htmlOthers}
-        </div>
-      `;
+      const { card, ptsGanados } = construirTarjetaResultado(p);
+      puntosTotalesJugador += ptsGanados;
       cardContainer.appendChild(card);
     });
 
@@ -890,7 +858,6 @@ function renderRankingGeneral() {
     // Lógica para la flecha de variación 
     let badgeVariacion = '';
     if (window.mostrarVariacionRanking) {
-       let variaciones = getVariacionPosiciones();
        let diff = variaciones[row.jugador] || 0;
        if (diff > 0) {
            badgeVariacion = `<span style="color: #137333; font-size: 0.8rem; font-weight: 800; margin-left: 8px;" title="Subió ${diff} posiciones">▲ ${diff}</span>`;
@@ -1159,15 +1126,13 @@ function renderAdminJugadores() {
   container.innerHTML = html;
 }
 
-// Función para saber la fase de un partido desde el frontend
+// Función para saber la fase de un partido desde el frontend.
+// Deriva los rangos de rondasFase2 en vez de repetirlos, para no tener que
+// mantener sincronizados dos mapeos id -> fase distintos.
 function getFaseKeyDePartidoFrontend(id) {
-  if (id >= 1 && id <= 72) return 'grupos';
-  if (id >= 73 && id <= 88) return 'f16';
-  if (id >= 89 && id <= 96) return 'f8';
-  if (id >= 97 && id <= 100) return 'f4';
-  if (id >= 101 && id <= 102) return 'semi';
-  if (id >= 103 && id <= 104) return 'final';
-  return '';
+  if (id >= 1 && id <= NUM_GRUPOS * PARTIDOS_POR_GRUPO) return 'grupos';
+  const ronda = rondasFase2.find(r => id >= r.min && id <= r.max);
+  return ronda ? ronda.id : '';
 }
 
 // Ventana Modal del Perfil
@@ -1261,11 +1226,7 @@ function abrirPerfilJugador(username) {
   if (appData.fases.grupos && !esPropio) {
     html += `<div class="info-card" style="text-align:center;">🔒 Los pronósticos de grupos están ocultos hasta que el Admin cierre la carga de resultados.</div>`;
   } else {
-    for (let i = 0; i < 12; i++) {
-      const letraGrupo = String.fromCharCode(65 + i);
-      const partidosGrupo = appData.partidos.filter(p => p.id > (i * 6) && p.id <= ((i + 1) * 6));
-      if (partidosGrupo.length === 0) continue;
-
+    obtenerGruposConPartidos().forEach(({ letra: letraGrupo, partidos: partidosGrupo }) => {
       html += `<h3 class="group-title" style="margin-top: 0;">Grupo ${letraGrupo}</h3>`;
       
       partidosGrupo.forEach(p => {
@@ -1297,7 +1258,7 @@ function abrirPerfilJugador(username) {
       });
       // Inyectamos la tablita hipotética al final del grupo
       html += generarTablaPerfilHTML(partidosGrupo, username);
-    }
+    });
   }
 
   // 2. DIBUJAMOS LAS ELIMINATORIAS
@@ -1305,7 +1266,7 @@ function abrirPerfilJugador(username) {
   let elimsRendered = false;
 
   rondasFase2.forEach(ronda => {
-    const partidosRonda = appData.partidos.filter(p => p.id >= ronda.min && p.id <= ronda.max);
+    const partidosRonda = obtenerPartidosDeRonda(ronda);
     if (partidosRonda.length === 0) return;
 
     if (appData.fases[ronda.id] && !esPropio) {
@@ -1359,10 +1320,7 @@ function cerrarPerfil(e) {
 
 function calcularMejoresTercerosReales() {
   let terceros = [];
-  for (let i = 0; i < 12; i++) {
-    const partidosGrupo = appData.partidos.filter(p => p.id > (i * 6) && p.id <= ((i + 1) * 6));
-    if (partidosGrupo.length === 0) continue;
-    
+  obtenerGruposConPartidos().forEach(({ partidos: partidosGrupo }) => {
     let stats = {};
     partidosGrupo.forEach(p => {
       if (p.local && !stats[p.local]) stats[p.local] = { nombre: p.local, pts: 0, df: 0, gf: 0 };
@@ -1381,8 +1339,8 @@ function calcularMejoresTercerosReales() {
     });
 
     let tabla = Object.values(stats).sort((a,b) => b.pts - a.pts || b.df - a.df || b.gf - a.gf);
-    if (tabla[2]) terceros.push(tabla[2]); 
-  }
+    if (tabla[2]) terceros.push(tabla[2]);
+  });
   // Ordenamos la tabla global de terceros de mejor a peor
   terceros.sort((a,b) => b.pts - a.pts || b.df - a.df || b.gf - a.gf);
   // Retornamos solo los nombres de los 8 mejores
@@ -1408,13 +1366,13 @@ function renderPremiosRandom() {
         Tenés tiempo hasta que cierre la Fase de Grupos para modificar tus elecciones. No suman puntos.
       </div>
       <div class="extras-form" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-        <div class="form-group"><label>⚽ Máximo Goleador del torneo</label><input type="text" id="ext-goleador" class="inp-extra" value="${appData.misExtras.goleador || ''}" placeholder="Ej: Mbappé"></div>
-        <div class="form-group"><label>👟 Máximo Asistidor</label><input type="text" id="ext-asistidor" class="inp-extra" value="${appData.misExtras.asistidor || ''}" placeholder="Ej: De Bruyne"></div>
-        <div class="form-group"><label>🟨 Jugador con más Amarillas</label><input type="text" id="ext-amarillas" class="inp-extra" value="${appData.misExtras.amarillas || ''}" placeholder="Ej: Cuti Romero"></div>
-        <div class="form-group"><label>⚡ Partidos demorados por tormenta</label><input type="number" min="0" id="ext-tormentas" class="inp-extra" value="${appData.misExtras.tormentas !== undefined ? appData.misExtras.tormentas : ''}" placeholder="Cantidad (Ej: 2)"></div>
-        <div class="form-group"><label>🏃‍♂️ Invasiones de cancha por hinchas</label><input type="number" min="0" id="ext-invasiones" class="inp-extra" value="${appData.misExtras.invasiones !== undefined ? appData.misExtras.invasiones : ''}" placeholder="Cantidad (Ej: 5)"></div>
-        <div class="form-group"><label>🔥 Equipo más goleador</label><input type="text" id="ext-eqgoleador" class="inp-extra" value="${appData.misExtras.eqgoleador || ''}" placeholder="Ej: Francia"></div>
-        <div class="form-group"><label>🛡️ Equipo más goleado</label><input type="text" id="ext-eqgoleado" class="inp-extra" value="${appData.misExtras.eqgoleado || ''}" placeholder="Ej: Costa Rica"></div>
+        <div class="form-group"><label>⚽ Máximo Goleador del torneo</label><input type="text" id="ext-goleador" class="inp-extra" value="${escapeHtml(appData.misExtras.goleador || '')}" placeholder="Ej: Mbappé"></div>
+        <div class="form-group"><label>👟 Máximo Asistidor</label><input type="text" id="ext-asistidor" class="inp-extra" value="${escapeHtml(appData.misExtras.asistidor || '')}" placeholder="Ej: De Bruyne"></div>
+        <div class="form-group"><label>🟨 Jugador con más Amarillas</label><input type="text" id="ext-amarillas" class="inp-extra" value="${escapeHtml(appData.misExtras.amarillas || '')}" placeholder="Ej: Cuti Romero"></div>
+        <div class="form-group"><label>⚡ Partidos demorados por tormenta</label><input type="number" min="0" id="ext-tormentas" class="inp-extra" value="${escapeHtml(appData.misExtras.tormentas !== undefined ? appData.misExtras.tormentas : '')}" placeholder="Cantidad (Ej: 2)"></div>
+        <div class="form-group"><label>🏃‍♂️ Invasiones de cancha por hinchas</label><input type="number" min="0" id="ext-invasiones" class="inp-extra" value="${escapeHtml(appData.misExtras.invasiones !== undefined ? appData.misExtras.invasiones : '')}" placeholder="Cantidad (Ej: 5)"></div>
+        <div class="form-group"><label>🔥 Equipo más goleador</label><input type="text" id="ext-eqgoleador" class="inp-extra" value="${escapeHtml(appData.misExtras.eqgoleador || '')}" placeholder="Ej: Francia"></div>
+        <div class="form-group"><label>🛡️ Equipo más goleado</label><input type="text" id="ext-eqgoleado" class="inp-extra" value="${escapeHtml(appData.misExtras.eqgoleado || '')}" placeholder="Ej: Costa Rica"></div>
         
         <button id="btn-save-extras" onclick="guardarExtras()" style="width: 100%; margin-top: 15px; background: #8e44ad; color: white; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1.1rem;">Guardar Apuestas Random</button>
       </div>
@@ -1434,7 +1392,7 @@ function renderPremiosRandom() {
     Object.keys(catMap).forEach(k => {
       const real = appData.resultadosExtras[k] || '⏳ Pendiente';
       const mio = appData.misExtras[k] || '-';
-      html += `<tr><td style="font-weight:bold; text-align: left;">${catMap[k]}</td><td style="color:#137333; font-weight:bold;">${real}</td><td>${mio}</td></tr>`;
+      html += `<tr><td style="font-weight:bold; text-align: left;">${catMap[k]}</td><td style="color:#137333; font-weight:bold;">${escapeHtml(real)}</td><td>${escapeHtml(mio)}</td></tr>`;
     });
     html += `</tbody></table></div>`;
 
@@ -1447,11 +1405,11 @@ function renderPremiosRandom() {
       
       appData.extrasComunidad.forEach(user => {
         html += `<tr>
-          <td style="font-weight:bold; text-align: left;">${user.jugador}</td>
-          <td>${user.goleador || '-'}</td><td>${user.asistidor || '-'}</td>
-          <td>${user.amarillas || '-'}</td><td>${user.tormentas !== '' ? user.tormentas : '-'}</td>
-          <td>${user.invasiones !== '' ? user.invasiones : '-'}</td>
-          <td>${user.eqgoleador || '-'}</td><td>${user.eqgoleado || '-'}</td>
+          <td style="font-weight:bold; text-align: left;">${escapeHtml(user.jugador)}</td>
+          <td>${escapeHtml(user.goleador || '-')}</td><td>${escapeHtml(user.asistidor || '-')}</td>
+          <td>${escapeHtml(user.amarillas || '-')}</td><td>${escapeHtml(user.tormentas !== '' ? user.tormentas : '-')}</td>
+          <td>${escapeHtml(user.invasiones !== '' ? user.invasiones : '-')}</td>
+          <td>${escapeHtml(user.eqgoleador || '-')}</td><td>${escapeHtml(user.eqgoleado || '-')}</td>
         </tr>`;
       });
       html += `</tbody></table></div>`;
@@ -1914,6 +1872,51 @@ function ejecutarSimulacion() {
 }
 
 // 4. EL ORÁCULO MATEMÁTICO 8.0 (EXPLICACIÓN POR DESCARTE Y DIFERENCIAL)
+// Núcleo de puntaje del "Oráculo": qué tan conveniente es, para el usuario actual,
+// que un partido puntual termine con el resultado (testL, testV). Es compartido por
+// ejecutarOraculo() (barre todos los escenarios posibles) y obtenerEficienciaParaSimulador()
+// (evalúa un único resultado tipeado a mano) para que ambos midan siempre con la misma fórmula.
+function calcularScoreEscenario(matchId, testL, testV, miPosRealActual) {
+  const rankingPrueba = simularRankingFicticio(matchId, testL, testV);
+  const miIndex = rankingPrueba.findIndex(r => r.jugador.toLowerCase() === currentUser.username.toLowerCase());
+  const miFila = rankingPrueba[miIndex];
+  const miPosicion = miIndex + 1;
+
+  let score = 0;
+  score += (miFila.ptsGanadosAhora * 2000);
+  score += ((miPosRealActual - miPosicion) * 3000);
+
+  let scoreDiferencial = 0;
+  rankingPrueba.forEach((r) => {
+    if (r.jugador.toLowerCase() === currentUser.username.toLowerCase()) return;
+
+    const posRivalInicial = appData.ranking.findIndex(x => x.jugador === r.jugador) + 1;
+    const diffPuntos = miFila.ptsGanadosAhora - r.ptsGanadosAhora;
+    const distanciaTabla = Math.abs(miPosRealActual - posRivalInicial);
+
+    let pesoVector = 40;
+    if (distanciaTabla === 1) pesoVector = 200;
+    else if (distanciaTabla <= 3) pesoVector = 120;
+    else if (distanciaTabla <= 6) pesoVector = 70;
+    if (posRivalInicial <= 3) pesoVector += 80;
+
+    scoreDiferencial += (diffPuntos * pesoVector);
+  });
+  score += scoreDiferencial;
+
+  const totalGoles = testL + testV;
+  score -= (totalGoles * 20);
+
+  return {
+    score,
+    miPosicion,
+    ptsGanadosAca: miFila.ptsGanadosAhora,
+    scoreDiferencial,
+    totalGoles,
+    rankingGenerado: rankingPrueba
+  };
+}
+
 function ejecutarOraculo() {
   const matchId = parseInt(document.getElementById('sim-partido-select').value);
   const curL = parseInt(document.getElementById('ora-gL').value) || 0;
@@ -1922,53 +1925,22 @@ function ejecutarOraculo() {
   let todosLosEscenarios = [];
   const topeL = Math.max(5, curL + 2);
   const topeV = Math.max(5, curV + 2);
-  
+
   let miPosRealActual = appData.ranking.findIndex(r => r.jugador.toLowerCase() === currentUser.username.toLowerCase()) + 1;
 
   for (let testL = 0; testL <= topeL; testL++) {
     for (let testV = 0; testV <= topeV; testV++) {
-      
-      let rankingPrueba = simularRankingFicticio(matchId, testL, testV);
-      let miIndex = rankingPrueba.findIndex(r => r.jugador.toLowerCase() === currentUser.username.toLowerCase());
-      let miFila = rankingPrueba[miIndex];
-      let miPosicion = miIndex + 1;
-      
-      let score = 0;
-      score += (miFila.ptsGanadosAhora * 2000); 
-      score += ((miPosRealActual - miPosicion) * 3000); 
-
-      let scoreDiferencial = 0;
-      
-      rankingPrueba.forEach((r) => {
-         if (r.jugador.toLowerCase() === currentUser.username.toLowerCase()) return; 
-         
-         let posRivalInicial = appData.ranking.findIndex(x => x.jugador === r.jugador) + 1;
-         let diffPuntos = miFila.ptsGanadosAhora - r.ptsGanadosAhora; 
-         let distanciaTabla = Math.abs(miPosRealActual - posRivalInicial);
-         
-         let pesoVector = 40; 
-         if (distanciaTabla === 1) pesoVector = 200; 
-         else if (distanciaTabla <= 3) pesoVector = 120; 
-         else if (distanciaTabla <= 6) pesoVector = 70; 
-         if (posRivalInicial <= 3) pesoVector += 80; 
-         
-         scoreDiferencial += (diffPuntos * pesoVector);
-      });
-      
-      score += scoreDiferencial; 
-
-      let totalGolesEscenario = testL + testV;
-      score -= (totalGolesEscenario * 20);
+      const resultado = calcularScoreEscenario(matchId, testL, testV, miPosRealActual);
 
       todosLosEscenarios.push({
         rL: testL, rV: testV,
-        posicionMia: miPosicion,
-        ptsGanadosAca: miFila.ptsGanadosAhora,
-        score: score,
-        scoreVector: scoreDiferencial, // Lo guardamos para la comparación visual
-        totalGoles: totalGolesEscenario,
-        rankingGenerado: rankingPrueba,
-        esPosible: (testL >= curL && testV >= curV) 
+        posicionMia: resultado.miPosicion,
+        ptsGanadosAca: resultado.ptsGanadosAca,
+        score: resultado.score,
+        scoreVector: resultado.scoreDiferencial, // Lo guardamos para la comparación visual
+        totalGoles: resultado.totalGoles,
+        rankingGenerado: resultado.rankingGenerado,
+        esPosible: (testL >= curL && testV >= curV)
       });
     }
   }
@@ -2210,42 +2182,16 @@ function obtenerEficienciaParaSimulador(matchId, simL, simV) {
    const topeL = Math.max(5, simL + 2);
    const topeV = Math.max(5, simV + 2);
    let miPosRealActual = appData.ranking.findIndex(r => r.jugador.toLowerCase() === currentUser.username.toLowerCase()) + 1;
-   
+
    let todosLosScores = [];
    let scoreDelSimulado = 0;
 
-   // Simulamos todos los universos posibles igual que el oráculo
+   // Simulamos todos los universos posibles igual que el oráculo (misma fórmula: calcularScoreEscenario)
    for (let l = 0; l <= topeL; l++) {
       for (let v = 0; v <= topeV; v++) {
-         let rankingPrueba = simularRankingFicticio(matchId, l, v);
-         let miIndex = rankingPrueba.findIndex(r => r.jugador.toLowerCase() === currentUser.username.toLowerCase());
-         let miFila = rankingPrueba[miIndex];
-         let miPosicion = miIndex + 1;
-
-         let score = 0;
-         score += (miFila.ptsGanadosAhora * 2000);
-         score += ((miPosRealActual - miPosicion) * 3000);
-
-         let scoreDiferencial = 0;
-         rankingPrueba.forEach((r) => {
-            if (r.jugador.toLowerCase() === currentUser.username.toLowerCase()) return;
-            let posRivalInicial = appData.ranking.findIndex(x => x.jugador === r.jugador) + 1;
-            let diffPuntos = miFila.ptsGanadosAhora - r.ptsGanadosAhora;
-            let distanciaTabla = Math.abs(miPosRealActual - posRivalInicial);
-
-            let pesoVector = 40;
-            if (distanciaTabla === 1) pesoVector = 200;
-            else if (distanciaTabla <= 3) pesoVector = 120;
-            else if (distanciaTabla <= 6) pesoVector = 70;
-            if (posRivalInicial <= 3) pesoVector += 80;
-
-            scoreDiferencial += (diffPuntos * pesoVector);
-         });
-         score += scoreDiferencial;
-         score -= ((l + v) * 20);
-
+         const { score } = calcularScoreEscenario(matchId, l, v, miPosRealActual);
          todosLosScores.push(score);
-         
+
          // Si este universo es exactamente el que el usuario tipeó, guardamos su puntaje
          if (l === simL && v === simV) scoreDelSimulado = score;
       }
@@ -2277,6 +2223,18 @@ if (versionGuardada !== APP_VERSION) {
 let fotoPartidosOriginal = null; // Se llena dentro de fetchAppDatos()
 let chequeandoCambios = false;
 
+// Evita perder pronósticos tipeados y no guardados si se detectan cambios en el servidor
+function hayCambiosSinGuardar() {
+  return appData.partidos.some(p => {
+    const inL = document.getElementById(`gL_${p.id}`);
+    const inV = document.getElementById(`gV_${p.id}`);
+    if (!inL || !inV) return false;
+    const guardadoL = appData.misPronosticos[p.id] ? String(appData.misPronosticos[p.id].gL) : '';
+    const guardadoV = appData.misPronosticos[p.id] ? String(appData.misPronosticos[p.id].gV) : '';
+    return inL.value !== guardadoL || inV.value !== guardadoV;
+  });
+}
+
 // 3. EL "DESPERTADOR" DE LA PESTAÑA
 document.addEventListener('visibilitychange', async () => {
   // Solo accionamos cuando el usuario VUELVE a mirar la pestaña y ya está logueado
@@ -2296,8 +2254,13 @@ document.addEventListener('visibilitychange', async () => {
         
         // Verificamos si la foto que sacamos al inicio es distinta a la que llegó recién
         if (fotoPartidosOriginal && fotoNuevosPartidos !== fotoPartidosOriginal) {
-            console.log("⚠️ ¡Nuevos resultados detectados en la base de datos! Actualizando pantalla...");
-            window.location.reload(); 
+            if (hayCambiosSinGuardar()) {
+              console.log("⚠️ Hay resultados nuevos, pero no recargamos porque hay pronósticos sin guardar.");
+              alert("⚠️ Hay nuevos resultados cargados. Guardá tus pronósticos y volvé a entrar para ver los datos actualizados.");
+            } else {
+              console.log("⚠️ ¡Nuevos resultados detectados en la base de datos! Actualizando pantalla...");
+              window.location.reload();
+            }
         } else {
             console.log("✅ Todo está al día. No hacemos nada.");
         }
