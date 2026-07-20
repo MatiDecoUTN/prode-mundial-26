@@ -195,9 +195,10 @@ async function fetchAppDatos() {
       renderMisPronosticos(); 
       renderResultadosOficiales(); 
       renderRankingGeneral();
-      renderPremiosRandom(); 
+      renderPremiosRandom();
       renderSimuladorInit();
       iniciarContadorRegresivo();
+      mostrarPopupCierreTorneo();
     }
   } catch (err) { 
     alert("Error: " + err.message); 
@@ -1318,6 +1319,40 @@ function cerrarPerfil(e) {
   if (e.target.id === 'perfil-modal') document.getElementById('perfil-modal').remove();
 }
 
+// Popup de cierre de esta edición: anuncia el podio final y linkea al Salón de la Fama
+function mostrarPopupCierreTorneo() {
+  const html = `
+    <div class="modal-overlay" id="popup-cierre-torneo" onclick="cerrarPopupCierreTorneo(event)">
+      <div class="modal-content" style="max-width: 480px;" onclick="event.stopPropagation()">
+        <div class="modal-header" style="background: linear-gradient(135deg, #b8860b, #f1c40f); border-radius: 12px 12px 0 0;">
+          <div class="modal-title" style="color: white;">🏆 ¡Terminó el Mundial 2026!</div>
+          <button class="modal-close" style="color: white;" onclick="document.getElementById('popup-cierre-torneo').remove()">&times;</button>
+        </div>
+        <div class="modal-body" style="text-align: center;">
+          <p style="color: #555; margin-top: 0;">El prode llegó a su fin. Así quedó el podio de esta edición:</p>
+          <div style="display: flex; flex-direction: column; gap: 10px; margin: 20px 0;">
+            <div style="background: #fffbf0; border: 1px solid #ffd700; border-radius: 8px; padding: 10px; font-weight: 800; color: #b8860b;">🥇 Sabedordelacaprichosa</div>
+            <div style="background: #f8f9fa; border: 1px solid #dcdde1; border-radius: 8px; padding: 10px; font-weight: 700; color: #555;">🥈 Nico Lava</div>
+            <div style="background: #fdf4ee; border: 1px solid #e6c3a6; border-radius: 8px; padding: 10px; font-weight: 700; color: #8a3324;">🥉 Colincho</div>
+          </div>
+          <button onclick="irAlSalonDeLaFamaDesdeCierre()" style="width: 100%; background: #8e44ad; color: white; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem;">Ver Salón de la Fama</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function cerrarPopupCierreTorneo(e) {
+  if (e.target.id === 'popup-cierre-torneo') document.getElementById('popup-cierre-torneo').remove();
+}
+
+function irAlSalonDeLaFamaDesdeCierre() {
+  document.getElementById('popup-cierre-torneo').remove();
+  const btnSalon = document.querySelector('[data-tab="tab-salon"]');
+  if (btnSalon) showTab('tab-salon', btnSalon);
+}
+
 function calcularMejoresTercerosReales() {
   let terceros = [];
   obtenerGruposConPartidos().forEach(({ partidos: partidosGrupo }) => {
@@ -1345,6 +1380,55 @@ function calcularMejoresTercerosReales() {
   terceros.sort((a,b) => b.pts - a.pts || b.df - a.df || b.gf - a.gf);
   // Retornamos solo los nombres de los 8 mejores
   return terceros.slice(0, 8).map(t => t.nombre);
+}
+
+// Resultados reales del Mundial 2026 para Premios Random. Se hardcodean acá porque el
+// torneo ya terminó y no hay pantalla de admin para cargar esto en resultadosExtras (backend).
+const RESULTADOS_EXTRAS_OFICIALES = {
+  goleador: 'Kylian Mbappé',
+  asistidor: 'Michael Olise',
+  amarillas: 'Issa Diop',
+  tormentas: 3,
+  invasiones: 4,
+  eqgoleador: 'Inglaterra',
+  eqgoleado: ['Irak', 'Iraq', 'Túnez'] // empate real (Irak/Iraq son la misma selección, dos grafías) · cualquiera de los dos países cuenta como acierto
+};
+
+function normalizarTextoExtra(valor) {
+  return String(valor ?? '').trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+}
+
+function esAciertoExtra(categoria, valorJugador) {
+  if (valorJugador === undefined || valorJugador === null || valorJugador === '') return false;
+  const oficial = RESULTADOS_EXTRAS_OFICIALES[categoria];
+  if (Array.isArray(oficial)) return oficial.some(op => normalizarTextoExtra(op) === normalizarTextoExtra(valorJugador));
+  if (typeof oficial === 'number') return parseInt(valorJugador) === oficial;
+  return normalizarTextoExtra(valorJugador) === normalizarTextoExtra(oficial);
+}
+
+// Texto a mostrar por categoría cuando el valor oficial tiene variantes que son en
+// realidad el mismo equipo/persona (ej: "Irak"/"Iraq"), para no listarlas como si fueran
+// resultados distintos. Si una categoría no está acá, se muestran todos los valores del array.
+const RESULTADOS_EXTRAS_MOSTRAR = {
+  eqgoleado: 'Irak / Túnez'
+};
+
+function formatearResultadoOficialExtra(categoria) {
+  if (RESULTADOS_EXTRAS_MOSTRAR[categoria]) return RESULTADOS_EXTRAS_MOSTRAR[categoria];
+  const oficial = RESULTADOS_EXTRAS_OFICIALES[categoria];
+  return Array.isArray(oficial) ? oficial.join(' / ') : String(oficial);
+}
+
+function contarAciertosExtras(extras) {
+  return Object.keys(RESULTADOS_EXTRAS_OFICIALES).filter(k => esAciertoExtra(k, extras[k])).length;
+}
+
+function construirRankingAciertosExtras() {
+  const propio = { jugador: currentUser.username, ...appData.misExtras };
+  const resto = appData.extrasComunidad.filter(u => u.jugador.toLowerCase() !== currentUser.username.toLowerCase());
+  return [propio, ...resto]
+    .map(u => ({ jugador: u.jugador, aciertos: contarAciertosExtras(u) }))
+    .sort((a, b) => b.aciertos - a.aciertos);
 }
 
 function renderPremiosRandom() {
@@ -1378,11 +1462,36 @@ function renderPremiosRandom() {
       </div>
     `;
   } else {
-    html += `<div class="info-card" style="text-align:center; margin-bottom: 20px;">🔒 Apuestas cerradas. Acá podés ver qué puso cada uno.</div>`;
     const catMap = { goleador: '⚽ Goleador', asistidor: '👟 Asistidor', amarillas: '🟨 Amarillas', tormentas: '⚡ Tormentas', invasiones: '🏃‍♂️ Invasiones', eqgoleador: '🔥 Eq. Goleador', eqgoleado: '🛡️ Eq. Goleado' };
+    const TOTAL_CATEGORIAS = Object.keys(RESULTADOS_EXTRAS_OFICIALES).length;
 
+    html += `<div class="info-card" style="text-align:center; margin-bottom: 20px;">🔒 Apuestas cerradas. Así quedaron los resultados reales del Mundial 2026.</div>`;
+
+    // --- RANKING DE ACIERTOS DE TODO EL GRUPO ---
+    const ranking = construirRankingAciertosExtras();
     html += `
-      <h3 style="margin-top: 10px; font-size: 1.1rem; color: #333;">Tus Pronósticos vs Realidad</h3>
+      <h3 style="margin-top: 10px; font-size: 1.1rem; color: #333;">🏅 Ranking de Aciertos</h3>
+      <div class="table-container" style="margin-bottom: 30px;">
+        <table class="standings-table">
+          <thead><tr><th style="width: 50px;">Pos</th><th style="text-align: left;">Jugador</th><th>Aciertos</th></tr></thead>
+          <tbody>
+    `;
+    ranking.forEach((r, index) => {
+      let medalla = index + 1;
+      if (index === 0) medalla = "🥇"; if (index === 1) medalla = "🥈"; if (index === 2) medalla = "🥉";
+      const esSocio = r.jugador.toLowerCase() === currentUser.username.toLowerCase() ? 'highlight-user' : '';
+      html += `<tr class="${esSocio}">
+        <td style="font-weight: 700; text-align: center;">${medalla}</td>
+        <td class="team-name" style="text-align: left;">${escapeHtml(r.jugador)}</td>
+        <td class="col-pts">${r.aciertos} / ${TOTAL_CATEGORIAS}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+
+    // --- TUS PRONÓSTICOS VS LA REALIDAD ---
+    const misAciertos = contarAciertosExtras(appData.misExtras);
+    html += `
+      <h3 style="margin-top: 10px; font-size: 1.1rem; color: #333;">Tus Pronósticos vs Realidad <span style="color:#8e44ad;">(${misAciertos}/${TOTAL_CATEGORIAS} aciertos)</span></h3>
       <div class="table-container" style="margin-bottom: 30px;">
         <table class="standings-table">
           <thead><tr><th style="text-align: left;">Categoría</th><th>Resultado Oficial</th><th>Tu Voto</th></tr></thead>
@@ -1390,26 +1499,34 @@ function renderPremiosRandom() {
     `;
 
     Object.keys(catMap).forEach(k => {
-      const real = appData.resultadosExtras[k] || '⏳ Pendiente';
-      const mio = appData.misExtras[k] || '-';
-      html += `<tr><td style="font-weight:bold; text-align: left;">${catMap[k]}</td><td style="color:#137333; font-weight:bold;">${escapeHtml(real)}</td><td>${escapeHtml(mio)}</td></tr>`;
+      const real = formatearResultadoOficialExtra(k);
+      const mio = appData.misExtras[k];
+      const mioTexto = (mio !== undefined && mio !== null && mio !== '') ? escapeHtml(mio) : '-';
+      const mioCelda = esAciertoExtra(k, mio) ? `<span style="color:#137333; font-weight:800;">${mioTexto} ✅</span>` : mioTexto;
+      html += `<tr><td style="font-weight:bold; text-align: left;">${catMap[k]}</td><td style="color:#137333; font-weight:bold;">${escapeHtml(real)}</td><td>${mioCelda}</td></tr>`;
     });
     html += `</tbody></table></div>`;
 
     if (appData.extrasComunidad.length > 0) {
+      const celdaExtra = (categoria, valor) => {
+        const texto = escapeHtml((valor !== undefined && valor !== null && valor !== '') ? valor : '-');
+        return esAciertoExtra(categoria, valor) ? `<span style="color:#137333; font-weight:800;">${texto} ✅</span>` : texto;
+      };
+
       html += `<h3 style="margin-top:20px; font-size: 1.1rem; color: #333;">👀 Qué mandó el resto del grupo</h3>`;
       html += `<div class="table-container">
         <table class="standings-table" style="font-size: 0.8rem; white-space: nowrap;">
-          <thead><tr><th>Jugador</th><th>⚽ Gol</th><th>👟 Asis</th><th>🟨 Amar</th><th>⚡ Tor</th><th>🏃‍♂️ Inv</th><th>🔥 Eq+</th><th>🛡️ Eq-</th></tr></thead>
+          <thead><tr><th>Jugador</th><th>⚽ Gol</th><th>👟 Asis</th><th>🟨 Amar</th><th>⚡ Tor</th><th>🏃‍♂️ Inv</th><th>🔥 Eq+</th><th>🛡️ Eq-</th><th>Aciertos</th></tr></thead>
           <tbody>`;
-      
+
       appData.extrasComunidad.forEach(user => {
         html += `<tr>
           <td style="font-weight:bold; text-align: left;">${escapeHtml(user.jugador)}</td>
-          <td>${escapeHtml(user.goleador || '-')}</td><td>${escapeHtml(user.asistidor || '-')}</td>
-          <td>${escapeHtml(user.amarillas || '-')}</td><td>${escapeHtml(user.tormentas !== '' ? user.tormentas : '-')}</td>
-          <td>${escapeHtml(user.invasiones !== '' ? user.invasiones : '-')}</td>
-          <td>${escapeHtml(user.eqgoleador || '-')}</td><td>${escapeHtml(user.eqgoleado || '-')}</td>
+          <td>${celdaExtra('goleador', user.goleador)}</td><td>${celdaExtra('asistidor', user.asistidor)}</td>
+          <td>${celdaExtra('amarillas', user.amarillas)}</td><td>${celdaExtra('tormentas', user.tormentas !== '' ? user.tormentas : undefined)}</td>
+          <td>${celdaExtra('invasiones', user.invasiones !== '' ? user.invasiones : undefined)}</td>
+          <td>${celdaExtra('eqgoleador', user.eqgoleador)}</td><td>${celdaExtra('eqgoleado', user.eqgoleado)}</td>
+          <td style="font-weight:700; color:#8e44ad;">${contarAciertosExtras(user)}/${TOTAL_CATEGORIAS}</td>
         </tr>`;
       });
       html += `</tbody></table></div>`;
